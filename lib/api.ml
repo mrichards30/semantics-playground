@@ -1,7 +1,8 @@
 (* The interface the web UI drives. Terms stay on the OCaml side; the UI
-   refers to configurations by integer ids, which are stable for the
-   lifetime of a session (equal configurations always get the same id), so
-   the UI can merge paths and draw cycles in the configuration graph. *)
+   refers to them by integer ids, which are stable for the lifetime of a
+   session (equal terms always get the same id), so the UI can merge paths
+   and draw cycles. Relations are referred to by their index in
+   [relations]. *)
 
 type session = {
   mutable lang : Rules.lang;
@@ -9,8 +10,6 @@ type session = {
   terms : (int, Term.t) Hashtbl.t;
 }
 
-type successor = { rule : string; target : int; bindings : (string * string) list }
-type run = { finals : int list; states : int; truncated : bool }
 type error = { line : int; col : int; message : string }
 
 let create () = { lang = Rules.create (); ids = Hashtbl.create 256; terms = Hashtbl.create 256 }
@@ -26,12 +25,13 @@ let id s t =
 
 let term s i = Hashtbl.find s.terms i
 let show s i = Grammar.to_string s.lang.grammar (term s i)
+let latex s i = Latex.term s.lang.grammar (term s i)
 
 let catch f =
   try Ok (f ()) with Lexer.Error (tk, message) -> Error { line = tk.line; col = tk.col; message }
 
-(* Replace the language with a new definition (grammar, fixity, rules).
-   Any commands in the source run too; their output is returned. *)
+(* Replace the language with a new definition. Any commands in the source
+   run too; their output is returned. *)
 let load s src =
   catch (fun () ->
       let lang = Rules.create () in
@@ -44,38 +44,96 @@ let load s src =
 
 let config s src = catch (fun () -> id s (Toplevel.parse_config s.lang src))
 
-let successors s i =
-  List.map
-    (fun (rule, env, t) ->
-      let bindings =
-        List.rev env
-        |> List.filter_map (fun (x, v) ->
-               if Lazy.is_val v then Some (x, Grammar.to_string s.lang.grammar (Lazy.force v))
-               else None)
-      in
-      { rule; target = id s t; bindings })
-    (Rules.successors s.lang (term s i))
+(* Relations *)
 
-let run s i =
-  let r = Rules.run s.lang (term s i) in
+type relation_info = {
+  index : int;
+  notation : string;   (* with slots, e.g. "_ -> _": identifies the relation *)
+  form : string;       (* as declared, e.g. "(e, s) -> (e, s)" *)
+  shown : string;      (* LaTeX, with the declared sorts as arguments *)
+  steps : bool;        (* can be stepped: one input, an output of its sort *)
+  inputs : int;
+}
+
+let relation s i = List.nth s.lang.relations i
+
+let relations s =
+  List.mapi
+    (fun index (r : Rules.relation) ->
+      let rec sort = function
+        | Term.PVar (x, _) -> x
+        | Term.PTuple ps -> "(" ^ String.concat ", " (List.map sort ps) ^ ")"
+        | _ -> "?"
+      in
+      let rec form items sorts =
+        match (items, sorts) with
+        | Rules.NArg :: rest, x :: sorts -> sort x :: form rest sorts
+        | Rules.NSym y :: rest, sorts -> y :: form rest sorts
+        | _ -> []
+      in
+      { index; notation = r.key; form = String.concat " " (form r.notation r.sorts); shown = Latex.relation s.lang.grammar r;
+        steps = Rules.stepping r <> None; inputs = List.length (Rules.inputs r r.sorts) })
+    s.lang.relations
+
+(* Derivations, typeset: each node is a judgment and the rule that proves it. *)
+type derivation = { rule : string; judgment : string; premises : derivation list }
+
+let rec derivation s (d : Rules.derivation) =
+  let rel = List.find (fun (r : Rules.relation) -> r.key = d.rel_key) s.lang.relations in
+  { rule = d.by; judgment = Latex.judgment_terms s.lang.grammar rel d.args;
+    premises = List.map (derivation s) d.premises }
+
+type successor = { rule_name : string; target : int; labels : string list; why : derivation }
+
+let successors s rel i =
+  List.map
+    (fun (st : Rules.step) ->
+      { rule_name = st.rule_name; target = id s st.target;
+        labels = List.map (Latex.term s.lang.grammar) st.labels; why = derivation s st.why })
+    (Rules.successors s.lang (relation s rel) (term s i))
+
+type solution = { outputs : string list; output_ids : int list; proof : derivation }
+type solved = { solutions : solution list; out_of_fuel : bool }
+
+(* All solutions of a relation with one input. *)
+let solve s rel i =
+  let r = relation s rel in
+  let sols = Rules.query s.lang r [ term s i ] in
+  { solutions =
+      List.map
+        (fun (outs, d) ->
+          { outputs = List.map (Latex.term s.lang.grammar) outs; output_ids = List.map (id s) outs;
+            proof = derivation s d })
+        sols;
+    out_of_fuel = s.lang.out_of_fuel }
+
+type run = { finals : int list; states : int; truncated : bool }
+
+let run s rel i =
+  let r = Rules.run s.lang (relation s rel) (term s i) in
   { finals = List.map (id s) r.finals; states = r.states; truncated = r.truncated }
 
 let rule_names s = List.map (fun (r : Rules.rule) -> r.name) s.lang.rules
 
-(* Editor support. *)
+(* Editor support *)
 
 type diagnostic = { severity : string; start : int; stop : int; message : string }
+type typeset_rule = { from : int; until : int; tex : string }
 
 type checked = {
   diagnostics : diagnostic list;
   nonterminals : string list;
-  literals : string list;   (* symbols the grammar uses: if, skip, :=, ... *)
-  keywords : string list;   (* literal words inside productions: if, then, while *)
-  operator_nts : string list;   (* nonterminals that stand for an operator: op *)
+  literals : string list;        (* symbols the grammar uses: if, skip, :=, ... *)
+  keywords : string list;        (* literal words inside productions: if, then, while *)
+  operator_nts : string list;    (* nonterminals that stand for an operator: op *)
+  grammar_tex : string;
+  relations_tex : string list;
+  rules_tex : typeset_rule list; (* by the source range of each rule *)
 }
 
 let check src =
-  let ds, lang = Toplevel.check src in
+  let ds, lang, rules = Toplevel.check src in
+  let g = lang.grammar in
   {
     diagnostics =
       List.map
@@ -83,25 +141,13 @@ let check src =
           { severity = (match d.severity with Err -> "error" | Warning -> "warning");
             start = d.start; stop = d.stop; message = d.message })
         ds;
-    nonterminals = List.map fst lang.grammar.nts;
-    literals = List.sort_uniq compare (Grammar.literals lang.grammar);
-    keywords =
-      List.sort_uniq compare
-        (List.concat_map
-           (fun (_, ps) ->
-             List.concat_map
-               (function
-                 | Grammar.PSeq items ->
-                     List.filter_map
-                       (function
-                         | Grammar.Lit l when Lexer.is_ident_start l.[0] -> Some l
-                         | _ -> None)
-                       items
-                 | _ -> [])
-               ps)
-           lang.grammar.nts);
-    operator_nts =
-      List.filter (fun x -> Grammar.op_lits lang.grammar x <> None) (List.map fst lang.grammar.nts);
+    nonterminals = List.map fst g.nts;
+    literals = List.sort_uniq compare (Grammar.literals g @ g.words);
+    keywords = List.sort_uniq compare (Latex.keyword_words g);
+    operator_nts = List.filter (fun x -> Grammar.op_lits g x <> None) (List.map fst g.nts);
+    grammar_tex = Latex.grammar g;
+    relations_tex = List.map (Latex.relation g) lang.relations;
+    rules_tex = List.map (fun (r, from, until) -> { from; until; tex = Latex.rule g r }) rules;
   }
 
 let outline src =
@@ -109,12 +155,11 @@ let outline src =
   | Ok o -> Ok o
   | Error (tk, message) -> Error { line = tk.line; col = tk.col; message }
 
-(* Problems in a program (a configuration), against the loaded language:
-   syntax errors with their range, and subterms no production matches. *)
+(* Problems in a program against the loaded language: syntax errors with
+   their range, and subterms no production matches. *)
 let check_program s src =
   let g = s.lang.grammar in
   let in_grammar t = List.exists (fun (nt, _) -> Grammar.mem g nt t) g.nts in
-  (* The smallest construct that isn't in the grammar, if any. *)
   let rec stray (t : Term.t) =
     match t with
     | Tuple ts -> List.find_map stray ts
@@ -129,7 +174,6 @@ let check_program s src =
       | Some u ->
           [ { severity = "warning"; start = 0; stop = String.length src;
               message =
-                Printf.sprintf "%s doesn't match any production of the grammar"
-                  (Grammar.to_string g u) } ])
+                Printf.sprintf "%s doesn't match any production of the grammar" (Grammar.to_string g u) } ])
   | exception Lexer.Error (tk, message) ->
       [ { severity = "error"; start = tk.start; stop = max tk.stop (tk.start + 1); message } ]

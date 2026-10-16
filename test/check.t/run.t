@@ -14,6 +14,7 @@ Several mistakes in one file:
   >   n  ::= int
   >   s  ::= store
   > fixity infixl 4 + infixl 5 ++
+  > relation (e, s) -> (e, s)
   > rule plus (n1 + n2, s) -> (n, s) if n = n1 + nn
   > rule ifx (if tru then e1 else e2, s) -> (e1, s)
   > rule bad1 (e1 + e2, s) -> (e3, s)
@@ -26,13 +27,13 @@ Several mistakes in one file:
   bad.sem:3:22: warning: two subterms in a row can't be parsed; put a symbol between them
   bad.sem:3:49: warning: another production already starts with 'if'; only that one is used for parsing
   bad.sem:6:28: warning: '++' is not a symbol of the grammar
-  bad.sem:7:46: warning: 'nn' is not bound here, so it is arb
-  bad.sem:8:14: warning: 'tru' is not a nonterminal or a symbol of the grammar, so it only matches the symbol tru
-  bad.sem:9:28: error: 'e3' in the conclusion is never bound
-  bad.sem:10:17: error: expected a term but found ','
-  bad.sem:11:45: error: 'e3' is used before it is bound
-  bad.sem:12:6: warning: there is already a rule called plus
-  bad.sem:13:38: error: 'b' is not named after a nonterminal, so it can't be a pattern variable
+  bad.sem:8:46: warning: 'nn' is not bound here, so it is arb
+  bad.sem:9:14: warning: 'tru' is not a symbol of the grammar; did you mean 'true'?
+  bad.sem:10:28: error: 'e3' in the conclusion is never bound
+  bad.sem:11:17: error: expected a term but found ','
+  bad.sem:12:45: error: 'e3' is used before it is bound
+  bad.sem:13:6: warning: there is already a rule called plus
+  bad.sem:14:38: error: 'b' is not named after a nonterminal, so it can't be a pattern variable
   [1]
 
 Stray text after a conclusion or between premises:
@@ -41,10 +42,28 @@ Stray text after a conclusion or between premises:
   > grammar
   >   e ::= n | e + e
   >   n ::= int
+  > relation e -> e
   > rule a (n1 + n2) -> n junk if n = n1 + n2
   > rule b (n1 + n2) -> n if n = n1 + n2 n = 3
   > X
   $ circ --check trailing.sem
-  trailing.sem:4:23: error: unexpected 'junk' after the conclusion; premises start with 'if'
-  trailing.sem:5:38: error: unexpected 'n'; premises are separated by commas
+  trailing.sem:5:23: error: unexpected 'junk' after the judgment; premises start with 'if' and are separated by commas
+  trailing.sem:6:38: error: unexpected 'n'; premises are separated by commas
+  [1]
+
+Mode checking: a premise's inputs must already be bound.
+
+  $ cat > modes.sem <<'X'
+  > grammar
+  >   v ::= n
+  >   e ::= v | e + e
+  >   n ::= int
+  >   s ::= store
+  > relation (e, s) ==> (v, s)
+  > rule plus (e1 + e2, s) ==> (n, s'') if (e2, s') ==> (n2, s''), (e1, s) ==> (n1, s'), n = n1 + n2
+  > rule bad (e1 + e2, s) ==> (n, s) if (e1, s) -> (n, s)
+  > X
+  $ circ --check modes.sem
+  modes.sem:7:45: error: 's'' is used before it is bound
+  modes.sem:8:45: error: '->' isn't the symbol of any declared relation
   [1]

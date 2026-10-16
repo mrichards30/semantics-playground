@@ -13,6 +13,8 @@ grammar
 
 fixity  infixr 0 ||   infixr 1 ;   infix 2 :=   infix 3 >=   infixl 4 +   prefix 5 !
 
+relation (e, s) -> (e, s)
+
 rule plus   (E[n1 + n2], s)  -> (E[n], s)        if n = n1 + n2
 rule geq    (E[n1 >= n2], s) -> (E[v], s)        if v = (n1 >= n2)
 rule deref  (E[!l], s)       -> (E[n], s)        if n = s(l)

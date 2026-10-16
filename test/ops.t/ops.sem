@@ -6,6 +6,8 @@ grammar
 
 fixity  infixl 1 |>   infixl 2 <+>   prefix 3 ~~
 
+relation e -> e
+
 rule add   n1 <+> n2 -> n        if n = n1 + n2
 rule pipe  n1 |> n2  -> n        if n = n1 * n2
 rule neg   ~~ n1     -> n        if n = 0 - n1

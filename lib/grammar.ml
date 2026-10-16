@@ -20,10 +20,20 @@ type assoc = Left | Right | Non | Prefix
 type t = {
   mutable nts : (string * prod list) list;
   fixity : (string, assoc * int) Hashtbl.t;
+  (* how productions are drawn: LaTeX with #1, #2 … for the subterms,
+     keyed by skeleton (see [skel_of]) or, for a lone literal, by the literal *)
+  templates : (string option list, string) Hashtbl.t;
+  lit_templates : (string, string) Hashtbl.t;
+  (* words used by relations (def, value, …): never names *)
+  mutable words : string list;
 }
 
-let builtins = [ "int"; "sym"; "name"; "store" ]
-let create () = { nts = []; fixity = Hashtbl.create 16 }
+(* store is the old name for map *)
+let builtins = [ "int"; "sym"; "name"; "map"; "store" ]
+
+let create () =
+  { nts = []; fixity = Hashtbl.create 16; templates = Hashtbl.create 16;
+    lit_templates = Hashtbl.create 16; words = [] }
 let is_nt g x = List.mem_assoc x g.nts
 let prods g x = Option.value ~default:[] (List.assoc_opt x g.nts)
 
@@ -64,7 +74,8 @@ let literals g =
     g.nts
 
 (* `name`: any symbol the grammar doesn't use as a literal or nonterminal. *)
-let is_name g s = (not (List.mem s (literals g))) && base_nt g s = None
+let is_name g s =
+  (not (List.mem s (literals g))) && (not (List.mem s g.words)) && base_nt g s = None
 
 (* A nonterminal whose productions are all literals, like op ::= + | >=. *)
 let op_lits g x =
@@ -93,10 +104,11 @@ and mem_prod g p (t : Term.t) =
   | PBuiltin "int", Int _ -> true
   | PBuiltin "sym", Sym _ -> true
   | PBuiltin "name", Sym s -> is_name g s
-  | PBuiltin "store", Store _ -> true
+  | PBuiltin ("map" | "store"), Store _ -> true
   | PBuiltin _, _ -> false
   | PAlias y, _ -> mem g y t
   | PLit l, Sym s -> l = s
+  | PLit l, Int n -> l = string_of_int n
   | PHole, Hole -> true
   | PSeq items, Node ts ->
       List.length items = List.length ts && List.for_all2 (mem_item g) items ts

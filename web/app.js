@@ -36,12 +36,35 @@ function ensureLoaded() {
   loadedText = text;
   Typeset.setLanguage(circ.check(text));
   program.refresh();
+  chooseRelations();
   const n = circ.rules().length;
   banner.className = "status";
   banner.textContent = `${n} rule${n === 1 ? "" : "s"}`;
   $("start").disabled = false;
   $("session").hidden = true;
+  $("query").hidden = true;
   return true;
+}
+
+// --- relations ----------------------------------------------------------
+
+// The relation being run, by index into circ.relations(). Relations that
+// can be stepped (one input, an output of the same sort) get the stepper;
+// any other relation is queried for all its solutions.
+let rels = [];
+let rel = 0;
+const relation = () => rels[rel];
+
+function chooseRelations() {
+  const before = rels[rel] && rels[rel].notation;
+  rels = circ.relations();
+  const keep = rels.findIndex((r) => r.notation === before);
+  const stepping = rels.findIndex((r) => r.steps);
+  rel = keep >= 0 ? keep : stepping >= 0 ? stepping : 0;
+  const select = $("relation");
+  select.replaceChildren(...rels.map((r, i) => new Option(r.form, i)));
+  select.value = rel;
+  select.closest(".relation-pick").hidden = rels.length < 2;
 }
 
 function link(label, fn) {
@@ -60,7 +83,7 @@ function showPage(p) {
   $("machine").hidden = p !== "run";
   $("page-language").classList.toggle("on", p === "language");
   $("page-run").classList.toggle("on", p === "run");
-  if (p === "run" && ensureLoaded() && $("session").hidden && program.text.trim()) start();
+  if (p === "run" && ensureLoaded() && $("session").hidden && $("query").hidden && program.text.trim()) start();
 }
 
 function showProblems({ errors, warnings }) {
@@ -133,11 +156,19 @@ function start() {
     return;
   }
   status.textContent = "";
-  say("");
-  state.path = [{ id: r.id, rule: null }];
-  state.cursor = 0;
-  $("session").hidden = false;
-  render();
+  if (!relation()) return;
+  if (relation().steps) {
+    say("");
+    state.path = [{ id: r.id, rule: null, labels: [] }];
+    state.cursor = 0;
+    $("query").hidden = true;
+    $("session").hidden = false;
+    render();
+  } else {
+    $("session").hidden = true;
+    $("query").hidden = false;
+    solve(r.id);
+  }
 }
 
 const here = () => state.path[state.cursor].id;
@@ -145,7 +176,7 @@ const here = () => state.path[state.cursor].id;
 function take(succ) {
   say("");
   state.path = state.path.slice(0, state.cursor + 1);
-  state.path.push({ id: succ.target, rule: succ.rule });
+  state.path.push({ id: succ.target, rule: succ.rule, labels: succ.labels });
   state.cursor++;
   render();
 }
@@ -167,27 +198,68 @@ function el(tag, cls, ...kids) {
 }
 const li = (cls, ...kids) => el("li", cls, ...kids);
 const text = (s) => document.createTextNode(s);
-// Configurations are shown typeset, the same way the program editor draws them.
-function term(s) {
-  const t = el("span", "term");
-  t.innerHTML = Typeset.html(s);
+const rule = (s) => el("span", "rule", s);
+
+// LaTeX from the runtime, typeset.
+function tex(src, cls = "term", display = false) {
+  const t = el("span", cls);
+  if (window.katex) katex.render(src, t, { throwOnError: false, displayMode: display });
+  else t.textContent = src;
   return t;
 }
-const rule = (s) => el("span", "rule", s);
+
+// How a step is labelled: its rule, and any labels (a CCS action, say).
+function stepLabel(name, labels) {
+  const l = el("span", "step-label", rule(name || "start"));
+  if (labels && labels.length) l.append(" ", tex(labels.join(",\\, "), "label"));
+  return l;
+}
+
+// A derivation as a tree: each node is a judgment and the rule proving it.
+// Deep trees open collapsed below [open] levels.
+function derivation(d, open = 3) {
+  const node = li("deriv-node");
+  const head = el("div", "deriv-head", rule(d.rule), tex(d.judgment));
+  node.append(head);
+  if (d.premises.length) {
+    const kids = el("ul", "deriv");
+    for (const p of d.premises) kids.append(derivation(p, open - 1));
+    kids.hidden = open <= 0;
+    node.classList.add("has-kids");
+    node.classList.toggle("closed", kids.hidden);
+    head.onclick = (e) => {
+      e.stopPropagation();
+      kids.hidden = !kids.hidden;
+      node.classList.toggle("closed", kids.hidden);
+    };
+    node.append(kids);
+  }
+  return el("ul", "deriv root", node);
+}
 
 function render() {
   const id = here();
-  const succs = circ.successors(id);
+  const succs = circ.successors(rel, id);
 
-  $("current").innerHTML = Typeset.html(circ.show(id));
+  $("current").replaceChildren(tex(circ.latex(id), "term", true));
   $("step-count").textContent = state.cursor === 0 ? "start" : `step ${state.cursor}`;
 
   const next = $("next");
   next.replaceChildren();
   if (succs.length === 0) next.append(li("empty", text("no rule applies")));
   for (const s of succs) {
-    const item = li(null, rule(s.rule), term(circ.show(s.target)));
-    item.title = s.bindings.map(([x, v]) => `${x} = ${v}`).join("\n");
+    const why = el("button", "small why", "why");
+    why.title = "show the derivation of this step";
+    const item = li(null, stepLabel(s.rule, s.labels), tex(circ.latex(s.target)), why);
+    let tree = null;
+    why.onclick = (e) => {
+      e.stopPropagation();
+      if (tree) { tree.remove(); tree = null; item.classList.remove("open"); return; }
+      tree = el("div", "why-tree", derivation(s.why, 2));
+      tree.onclick = (e) => e.stopPropagation();
+      item.classList.add("open");
+      item.append(tree);
+    };
     item.onclick = () => take(s);
     next.append(item);
   }
@@ -195,14 +267,13 @@ function render() {
   const trace = $("trace");
   trace.replaceChildren();
   state.path.forEach((p, i) => {
-    const siblings = i > 0 ? circ.successors(state.path[i - 1].id) : [];
-    const label = el("span", null, rule(p.rule || "start"));
+    const siblings = i > 0 ? circ.successors(rel, state.path[i - 1].id) : [];
+    const label = stepLabel(p.rule, p.labels);
     if (siblings.length > 1) {
       const k = siblings.findIndex((s) => s.target === p.id && s.rule === p.rule) + 1;
       label.append(el("span", "branch", `${k} of ${siblings.length}`));
     }
-    const item = li(i === state.cursor ? "here" : null,
-      el("span", "n", String(i)), label, term(circ.show(p.id)));
+    const item = li(i === state.cursor ? "here" : null, el("span", "n", String(i)), label, tex(circ.latex(p.id)));
     item.onclick = () => { state.cursor = i; render(); };
     trace.append(item);
   });
@@ -211,6 +282,25 @@ function render() {
   $("reset").disabled = state.cursor === 0;
   say(succs.length === 0 ? "finished: no rule applies"
     : succs.length > 1 ? `${succs.length} successors: choose one` : "");
+}
+
+// A relation that can't be stepped is solved: every solution, with its
+// derivation.
+function solve(id) {
+  const r = circ.solve(rel, id);
+  const n = r.solutions.length;
+  $("query-meta").textContent =
+    (n === 0 ? "none" : `${n}`) + (r.outOfFuel ? ", search ran out of fuel" : "");
+  const list = $("solutions");
+  list.replaceChildren();
+  if (n === 0)
+    list.append(li("empty", text(r.outOfFuel
+      ? "no derivation found before the search ran out of fuel"
+      : "no derivation: nothing can be concluded about this input")));
+  for (const s of r.solutions) {
+    list.append(li("solution", el("div", "outputs", tex(s.outputs.join(",\; "), "term", true)),
+      el("div", "proof", el("h3", null, "Derivation"), derivation(s.proof, 3))));
+  }
 }
 
 // --- examples ---------------------------------------------------------
@@ -251,6 +341,12 @@ function init() {
   $("page-run").onclick = () => showPage("run");
   $("start").onclick = start;
   $("reset").onclick = reset;
+  $("relation").onchange = () => {
+    rel = Number($("relation").value);
+    $("session").hidden = true;
+    $("query").hidden = true;
+    start();
+  };
   $("source").onkeydown = (e) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); showPage("run"); }
   };

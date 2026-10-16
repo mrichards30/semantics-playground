@@ -1,0 +1,19 @@
+-- A calculator: arithmetic expressions, evaluated left to right.
+
+grammar
+  op ::= + | - | *
+  e  ::= n | e op e
+  n  ::= int
+
+fixity  infixl 4 + -   infixl 5 *
+
+relation e -> e
+
+rule add    n1 + n2 -> n          if n = n1 + n2
+rule sub    n1 - n2 -> n          if n = n1 - n2
+rule mul    n1 * n2 -> n          if n = n1 * n2
+rule left   e1 op e2 -> e1' op e2  if e1 -> e1'
+rule right  n1 op e2 -> n1 op e2'  if e2 -> e2'
+
+trace (1 + 2) * (10 - 4)
+step 2 * 3 - 4 * 5

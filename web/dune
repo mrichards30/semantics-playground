@@ -6,18 +6,20 @@
 (rule
  (alias runtest)
  (action
-  (run node %{dep:smoke.js} %{dep:circ_js.bc.js} %{dep:../test/par.t/par.sem})))
+  (run node %{dep:smoke.js} %{dep:circ_js.bc.js} %{dep:../test/par.t/par.sem}
+   %{dep:../test/bigstep.t/bigstep.sem} %{dep:../test/ccs.t/ccs.sem})))
 
 (rule
  (targets examples.js)
  (deps
   gen_examples.js
-  (:sems ../test/l1.t/l1.sem ../test/par.t/par.sem ../test/ctx.t/ctx.sem ../test/ops.t/ops.sem))
+  (:sems ../test/calc.t/calc.sem ../test/l1.t/l1.sem ../test/par.t/par.sem
+   ../test/bigstep.t/bigstep.sem ../test/ccs.t/ccs.sem))
  (action
   (with-stdout-to examples.js (run node gen_examples.js %{sems}))))
 
 ; `dune build @site` puts a ready-to-open page in _build/default/web/
 (alias
  (name site)
- (deps index.html style.css render.js editor.js typeset.js app.js examples.js circ_js.bc.js
+ (deps index.html style.css editor.js typeset.js app.js examples.js circ_js.bc.js
   vendor/codemirror.js))

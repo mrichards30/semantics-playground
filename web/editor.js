@@ -9,13 +9,19 @@
 // back to the slot (and the character range) they are about.
 
 const Editor = (() => {
-  let model = { grammar: [], fixity: "", rules: [] };
-  let info = { nts: new Set(), literals: new Set(), keywords: new Set(), opNts: new Set(), ops: [] };
+  let model = { grammar: [], fixity: "", relations: [], rules: [] };
+  // typeset forms from the last check: the grammar, each relation, each rule
+  let tex = { grammar: "", relations: [], rules: new Map() };
   let diags = new Map();   // slot key -> [{from, to, severity, message}]
   let cardDiags = [];      // [{card, severity, message}] not inside any slot
   let editing = null;      // card key being edited: "grammar" or "r:<i>"
   let onChange = () => {};
   let timer = null;
+
+  function katexInto(el, src, display) {
+    if (!window.katex) { el.textContent = src; return; }
+    window.katex.render(src, el, { throwOnError: false, displayMode: display });
+  }
 
   // --- serialization ----------------------------------------------------
 
@@ -31,6 +37,7 @@ const Editor = (() => {
       for (const [r, i] of rows) { text += "  "; put(`g:${i}`, r); text += "\n"; }
     }
     if (model.fixity.trim()) { text += "fixity "; put("fix", model.fixity); text += "\n"; }
+    model.relations.forEach((r, i) => { if (r.trim()) { text += "relation "; put(`rel:${i}`, r); text += "\n"; } });
     cards.push({ card: "grammar", start: gStart, end: text.length });
     model.rules.forEach((r, i) => {
       const start = text.length;
@@ -63,6 +70,7 @@ const Editor = (() => {
     model = {
       grammar: mergeRows(o.grammar),
       fixity: o.fixity.join("  "),
+      relations: o.relations.slice(),
       rules: o.rules.map((r) => ({ name: r.name, conclusion: r.conclusion, premises: r.premises.slice() })),
     };
   }
@@ -87,14 +95,13 @@ const Editor = (() => {
   function check() {
     const { text, slots, cards } = serialize();
     const r = circ.check(text);
-    info = {
-      nts: new Set(r.nonterminals),
-      literals: new Set(r.literals.filter((l) => /^[A-Za-z_]/.test(l))),
-      keywords: new Set(r.keywords),
-      opNts: new Set(r.operatorNonterminals),
-      ops: r.literals.filter((l) => !/^[A-Za-z_]/.test(l)),
-    };
     const idx = byteToIndex(text);
+    tex = { grammar: r.grammarTex, relations: r.relationsTex, rules: new Map() };
+    for (const t of r.rulesTex) {
+      const at = idx(t.from);
+      const card = cards.find((c) => at >= c.start && at < c.end);
+      if (card) tex.rules.set(card.card, t.tex);
+    }
     diags = new Map();
     cardDiags = [];
     for (const d of r.diagnostics) {
@@ -116,7 +123,7 @@ const Editor = (() => {
 
   function problemsOf(card) {
     const own = [...diags.entries()]
-      .filter(([k]) => k === card || k.startsWith(card + ":") || (card === "grammar" && (k.startsWith("g:") || k === "fix")))
+      .filter(([k]) => k === card || k.startsWith(card + ":") || (card === "grammar" && (k.startsWith("g:") || k === "fix" || k.startsWith("rel:"))))
       .flatMap(([k, ds]) => ds.map((d) => ({ ...d, slot: k })));
     return own.concat(cardDiags.filter((d) => d.card === card));
   }
@@ -233,12 +240,28 @@ const Editor = (() => {
       })));
       const fix = slot("fix", model.fixity, (v) => (model.fixity = v), { placeholder: "infixl 4 +   prefix 5 !" });
       rows.append(el("div", "row fixity", el("span", "label", "fixity"), fix));
+      model.relations.forEach((r, i) => {
+        const s = slot(`rel:${i}`, r, (v) => (model.relations[i] = v), {
+          placeholder: "(e, s) -> (e, s)",
+          onEnter: () => { model.relations.splice(i + 1, 0, ""); refresh(); focusSlot(`rel:${i + 1}`, 0, 0); },
+        });
+        rows.append(el("div", "row", el("span", "label", "relation"), s,
+          button("×", "remove this relation", () => { model.relations.splice(i, 1); changed(); })));
+      });
+      rows.append(el("div", "row add", button("+ relation", "declare a relation", () => {
+        model.relations.push(""); refresh(); focusSlot(`rel:${model.relations.length - 1}`, 0, 0);
+      })));
       card.append(rows);
     } else {
       const math = el("div", "math");
-      Render.katex(Render.grammar(model.grammar, info), math);
+      katexInto(math, tex.grammar, true);
       card.append(math);
       if (model.fixity.trim()) card.append(el("div", "fixity-view", "fixity  " + model.fixity));
+      if (tex.relations.length) {
+        const rels = el("div", "relations-view", el("span", "label", "relations"));
+        for (const t of tex.relations) { const m = el("span", "rel"); katexInto(m, t, false); rels.append(m); }
+        card.append(rels);
+      }
     }
     card.append(problemList(key));
     card.onclick = () => { if (editing !== key) { editing = key; refresh(); } };
@@ -271,7 +294,9 @@ const Editor = (() => {
       card.append(head, prems, el("div", "bar-line"), concl);
     } else {
       const math = el("div", "math");
-      Render.katex(Render.rule(r, info), math);
+      const t = tex.rules.get(key);
+      if (t) katexInto(math, t, true);
+      else math.append(el("span", "untypeset", `${r.name}  ${r.conclusion}`));
       card.append(math);
     }
     card.append(problemList(key), tools(card, i));

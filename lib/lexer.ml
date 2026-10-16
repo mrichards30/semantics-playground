@@ -10,6 +10,7 @@ type tok =
   | RBRACE
   | COMMA
   | BACKTICK
+  | STRING of string   (* "..." : quoted grammar literals and LaTeX templates *)
   | EOF
 
 type token = { tok : tok; line : int; col : int; start : int; stop : int }
@@ -30,6 +31,7 @@ let tok_to_string = function
   | RBRACE -> "}"
   | COMMA -> ","
   | BACKTICK -> "`"
+  | STRING x -> "\"" ^ x ^ "\""
   | EOF -> "end of input"
 
 (* The runtime's own multi-character symbols: rule arrows, grammar
@@ -110,6 +112,17 @@ let lex_one s =
               (Option.value ~default:(String.make 1 c)
                  (List.find_opt (fun o -> starts_with o start) s.ops));
       mk (OP (String.sub src start (s.off - start))))
+    else if c = '"' then (
+      (* raw: no escapes, so LaTeX backslashes need no doubling *)
+      match String.index_from_opt src (start + 1) '"' with
+      | Some j when not (String.contains (String.sub src start (j - start)) '\n') ->
+          s.off <- j + 1;
+          mk (STRING (String.sub src (start + 1) (j - start - 1)))
+      | _ ->
+          raise
+            (Error
+               ( { tok = EOF; line = s.line; col = start - s.line_start + 1; start; stop = start + 1 },
+                 "unterminated string" )))
     else (
       s.off <- start + 1;
       let tok =

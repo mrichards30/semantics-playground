@@ -1,0 +1,34 @@
+-- Pure CCS (Milner): processes, actions, and the labelled transition
+-- relation P -alpha-> P'. Process constants are defined by a relation of
+-- their own, so the transition rules read as in the textbook.
+
+grammar
+  a     ::= name
+  K     ::= name
+  alpha ::= a | ~ a shown "\overline{#1}" | tau shown "\tau"
+  P     ::= 0 shown "\mathbf{0}" | alpha . P | P + P | P "|" P | P \ a | K
+
+fixity  prefix 7 ~   infixl 6 \   infixr 5 .   infixl 4 |   infixl 3 +
+
+relation P -alpha-> P  mode in out out  shown "#1 \xrightarrow{#2} #3"
+relation K def P       shown "#1 \stackrel{\mathrm{def}}{=} #2"
+
+rule act   alpha . P -alpha-> P
+rule sum1  P1 + P2 -alpha-> P'  if P1 -alpha-> P'
+rule sum2  P1 + P2 -alpha-> P'  if P2 -alpha-> P'
+rule par1  P1 | P2 -alpha-> P1' | P2  if P1 -alpha-> P1'
+rule par2  P1 | P2 -alpha-> P1 | P2'  if P2 -alpha-> P2'
+rule com1  P1 | P2 -tau-> P1' | P2'  if P1 -a-> P1', P2 -~a-> P2'
+rule com2  P1 | P2 -tau-> P1' | P2'  if P1 -~a-> P1', P2 -a-> P2'
+rule res   P \ a -alpha-> P' \ a  if P -alpha-> P', not (alpha in {a, `~a`})
+rule con   K -alpha-> P'  if K def P, P -alpha-> P'
+
+-- Milner's coffee machine and computer scientist
+rule cm    CM def coin . ~coffee . CM
+rule cs    CS def ~pub . ~coin . coffee . CS
+
+step (CM | CS) \ coin \ coffee
+step CM | CS
+step (CM | ~coin . coffee . CS) \ coin \ coffee
+-- three states, cycling forever
+run (CM | CS) \ coin \ coffee

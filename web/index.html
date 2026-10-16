@@ -38,7 +38,10 @@
   </section>
 
   <section id="machine" hidden>
-    <div id="lang-banner" class="status"></div>
+    <div class="bar relation-bar">
+      <label class="relation-pick">relation <select id="relation"></select></label>
+      <span id="lang-banner" class="status"></span>
+    </div>
     <h2>Program</h2>
     <div id="program" class="program-editor"></div>
     <div class="bar">
@@ -48,7 +51,7 @@
 
     <div id="session" hidden>
       <h2>Configuration <span id="step-count" class="meta"></span></h2>
-      <pre id="current" class="term current"></pre>
+      <div id="current" class="current"></div>
 
       <div class="bar controls">
         <button id="reset" title="back to the start">reset</button>
@@ -60,7 +63,11 @@
 
       <h3>Trace</h3>
       <ol id="trace" class="trace"></ol>
+    </div>
 
+    <div id="query" hidden>
+      <h2>Solutions <span id="query-meta" class="meta"></span></h2>
+      <ol id="solutions" class="solutions"></ol>
     </div>
   </section>
 </main>
@@ -69,7 +76,6 @@
 <script src="vendor/codemirror.js"></script>
 <script src="circ_js.bc.js"></script>
 <script src="typeset.js"></script>
-<script src="render.js"></script>
 <script src="editor.js"></script>
 <script src="examples.js"></script>
 <script src="app.js"></script>

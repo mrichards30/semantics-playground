@@ -158,39 +158,37 @@ rule tIf    G |- if e1 then e2 else e3 : t  if G |- e1 : bool, G |- e2 : t, G |-
 Done:
 
 1. Core: terms, grammar-driven Pratt reader, matcher (categories, repeated
-   names, contexts), premise solver, `successors`, `run` — for a single
-   built-in relation `->`.
-2. Text front end + cram tests: L1 (Sewell), L1 + parallel, context-style
-   L1, user-defined operators, metalogic, checker diagnostics.
-3. `js_of_ocaml` build and session API (`web/circ_js.ml`, smoke-tested under
-   `dune test`).
-4. Web UI: language page (rule cards, live diagnostics, text tab) and run
-   page (play / step / branch policy, trace, run all).
+   names, contexts).
+2. Relations: declarations with notation, sorts, modes (default: last
+   argument is the output; one argument means a predicate) and `shown`
+   LaTeX templates; rules concluding any relation; mode-directed solving
+   with derivations, memoisation, cycle detection (a recurring goal
+   contributes nothing) and a depth limit. `->*` premises are gone.
+3. Stepping for any relation with one input and an output of the same sort;
+   other outputs are step labels (CCS actions). Other relations are queried.
+4. Grammar extras: quoted literals (`"|"`), integer literals (`0`), production
+   templates (`~ a shown "\overline{#1}"`), `map` (with `store` as an alias).
+5. Typesetting in OCaml (`lib/latex.ml`) from the grammar's own structure and
+   templates: rule cards, grammar, relations, configurations, derivations.
+6. Checker: errors and warnings with ranges; mode checking; typo warnings
+   with suggestions; `circ --check`, `circ --latex`.
+7. Web UI: language page (rule cards, relations, live diagnostics, text tab)
+   and run page (relation picker; stepper with labels and "why" derivations;
+   query view with derivation trees). Typeset-as-you-type program editor.
+8. Examples (and cram tests): calculator, L1, L1 + parallel, big-step L1,
+   pure CCS; plus evaluation-context L1 and user-defined operators as tests.
 
 Next:
 
-1. Remove the built-in `->*` premise (`Steps` in `lib/rules.ml`); it is
-   untested and no longer part of the design.
-2. Relation declarations (notation, sorts, modes); rules over any relation;
-   `->` becomes an ordinary declared relation.
-3. Generic mode-directed `solve`, with mode and sort checking in the checker.
-4. Player: iterate view for same-sort relations (today's stepper), derivation
-   view for one-shot relations; fuel limits.
-5. Configuration graph for the iterate view.
-
-Development uses a project-local opam switch (`_opam/`, OCaml 5.5):
-`opam switch create . ocaml-base-compiler.5.5.0 && opam install dune js_of_ocaml-compiler js_of_ocaml`.
+- Configuration graph for stepping relations.
+- Queries with more than one input (e.g. typing `G |- e : t`) from the run
+  page: the program box only holds a single input today.
+- Sort checking of judgment arguments beyond tuple shape.
 
 ## Open
 
-- Relation declaration syntax, and whether modes are explicit or have a
-  default (e.g. inputs left of the relation symbol).
 - How the derivation view handles large or infinite searches (lazy
   expansion, fuel settings).
 - Negated premises ("no rule applies", "is not a value"): useful, but needs
   stratification; left out for now.
-- A lone `|` is always the grammar's alternative separator, so an object
-  language can't use `|` itself as an operator. Fix: quoted literals in
-  productions (`e "|" e`).
-- Rename `store` to `map`.
 - Whether users ever need helper functions (`fun`).

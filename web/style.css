@@ -155,7 +155,7 @@ pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
 
 ol, ul { margin: 0; padding: 0; list-style: none; }
 
-.choices li, .trace li, .finals li {
+.choices > li, .trace > li, .finals > li {
   display: grid;
   grid-template-columns: 7rem minmax(0, 1fr);
   gap: 0.75rem;
@@ -164,14 +164,14 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
   border-bottom: 1px solid var(--rule);
 }
 
-.choices li { cursor: pointer; }
-.choices li:hover, .trace li:hover { background: var(--hover); }
-.choices li.empty, .finals li { cursor: default; grid-template-columns: minmax(0, 1fr); }
-.choices li.empty:hover { background: none; }
-.choices li.empty { color: var(--muted); font-style: italic; }
+.choices > li { cursor: pointer; }
+.choices > li:hover, .trace > li:hover { background: var(--hover); }
+.choices > li.empty, .finals > li { cursor: default; grid-template-columns: minmax(0, 1fr); }
+.choices > li.empty:hover { background: none; }
+.choices > li.empty { color: var(--muted); font-style: italic; }
 
-.trace li { cursor: pointer; grid-template-columns: 2.5rem 7rem minmax(0, 1fr); }
-.trace li.here { background: var(--hover); }
+.trace > li { cursor: pointer; grid-template-columns: 2.5rem 7rem minmax(0, 1fr); }
+.trace > li.here { background: var(--hover); }
 .trace .n { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
 
 .rule {
@@ -404,3 +404,43 @@ button.small:hover { color: var(--ink); }
 /* CodeMirror's base theme sets a monospace font on the scroller, which the
    spaces between tokens would otherwise inherit */
 .program-editor .cm-scroller { font-family: var(--math); line-height: 1.5; }
+
+/* --- relations, derivations ----------------------------------------------- */
+
+.relation-bar { margin-bottom: 0.25rem; }
+.relation-pick { font-size: 13px; color: var(--muted); margin-right: 0.75rem; }
+.relation-pick[hidden] { display: none; }
+
+.relations-view { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1.5rem; padding: 0.3rem 0.25rem 0; }
+.relations-view .label { font-size: 13px; color: var(--muted); }
+.untypeset { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+
+#current .katex-display { margin: 0.2rem 0; text-align: left; }
+#current .katex-display > .katex { text-align: left; }
+.current { padding: 0.6rem 1rem; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); overflow-x: auto; }
+.choices > li, .trace > li { align-items: center; }
+.choices > li { grid-template-columns: 9rem minmax(0, 1fr) auto; }
+.trace > li { grid-template-columns: 2.5rem 9rem minmax(0, 1fr); }
+#current .katex { font-size: 1.35em; }
+.step-label .label { color: var(--ink); }
+.term .katex, .label .katex { font-size: 1.05em; }
+.choices .term, .trace .term { overflow-x: auto; }
+.why { visibility: hidden; }
+.choices > li:hover .why, .choices > li.open .why { visibility: visible; }
+.why-tree { grid-column: 1 / -1; padding: 0.3rem 0 0.4rem 0.5rem; cursor: default; }
+
+.solutions { list-style: none; padding: 0; margin: 0; }
+.solution { border-bottom: 1px solid var(--rule); padding: 0.4rem 0 0.8rem; }
+.solution .outputs .katex-display { margin: 0.3rem 0; text-align: left; }
+.solution .outputs .katex-display > .katex { text-align: left; }
+.solution h3 { margin: 0.4rem 0 0.2rem; }
+
+/* derivation trees: one judgment per line, premises indented under it */
+ul.deriv { list-style: none; margin: 0; padding-left: 1.25rem; border-left: 1px solid var(--rule); }
+ul.deriv.root { padding-left: 0; border-left: none; }
+.deriv-head { display: flex; align-items: baseline; gap: 0.75rem; padding: 0.1rem 0; }
+.deriv-head .rule { min-width: 4.5rem; }
+.has-kids > .deriv-head { cursor: pointer; }
+.has-kids > .deriv-head .rule::before { content: "▾ "; color: var(--muted); }
+.has-kids.closed > .deriv-head .rule::before { content: "▸ "; }
+.deriv-head .term { overflow-x: auto; }
