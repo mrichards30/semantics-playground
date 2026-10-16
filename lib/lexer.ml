@@ -30,59 +30,86 @@ let tok_to_string = function
   | BACKTICK -> "`"
   | EOF -> "end of input"
 
-(* Multi-character operators, longest first. Any other run of operator
-   characters is split into single characters. *)
-let multi_ops =
-  [ "|->"; "->*"; "::="; "==>"; "-->"; "<=>";
-    "->"; ":="; "::"; ">="; "<="; "=="; "!="; "<>"; "&&"; "||"; "=>"; "<-";
-    "|>"; "<|"; "++"; "**"; "~>" ]
+(* The runtime's own multi-character symbols: rule arrows, grammar
+   definitions, store maplets, and the metalogic's operators. Object-language
+   operators are never listed here; they are learned from the grammar. *)
+let own_ops = [ "|->"; "->*"; "::="; "->"; "<="; ">="; "<>"; "!="; "&&"; "||" ]
 
 let is_op_char c = String.contains "+-*/<>=!:;|&^~.?@#$%\\" c
 let is_digit c = '0' <= c && c <= '9'
 let is_ident_start c = c = '_' || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
 let is_ident_char c = is_ident_start c || is_digit c || c = '\''
 
-let tokenize (src : string) : token array =
-  let n = String.length src in
-  let toks = ref [] in
-  let line = ref 1 and line_start = ref 0 in
-  let i = ref 0 in
-  let emit tok start stop =
-    toks := { tok; line = !line; col = start - !line_start + 1; start; stop } :: !toks
+(* Tokens are produced on demand, because what counts as one operator
+   depends on the grammar read so far.
+
+   - In [munch] mode (inside grammar and fixity declarations) a run of
+     operator characters is a single symbol: that is how a grammar declares
+     its operators, e.g. e ::= e <+> e.
+   - Otherwise a run is split by longest match against the known symbols,
+     falling back to single characters, so x:=!x+1 lexes once := is known. *)
+type stream = {
+  src : string;
+  mutable buf : token array;
+  mutable len : int;          (* tokens lexed so far *)
+  mutable off : int;          (* where lexing resumes *)
+  mutable line : int;
+  mutable line_start : int;
+  mutable ops : string list;  (* known multi-character symbols, longest first *)
+  mutable munch : bool;
+  mutable pos : int;          (* the parser's cursor into buf *)
+}
+
+let stream_of_string src =
+  { src; buf = [||]; len = 0; off = 0; line = 1; line_start = 0;
+    ops = List.sort (fun a b -> compare (String.length b) (String.length a)) own_ops;
+    munch = false; pos = 0 }
+
+let lex_one s =
+  let src = s.src and n = String.length s.src in
+  let starts_with str at =
+    let l = String.length str in
+    at + l <= n && String.sub src at l = str
   in
-  let starts_with s at =
-    let l = String.length s in
-    at + l <= n && String.sub src at l = s
+  let rec skip () =
+    if s.off < n then
+      let c = src.[s.off] in
+      if c = '\n' then (
+        s.off <- s.off + 1;
+        s.line <- s.line + 1;
+        s.line_start <- s.off;
+        skip ())
+      else if c = ' ' || c = '\t' || c = '\r' then (
+        s.off <- s.off + 1;
+        skip ())
+      else if starts_with "--" s.off && not (s.off + 2 < n && is_op_char src.[s.off + 2]) then (
+        while s.off < n && src.[s.off] <> '\n' do s.off <- s.off + 1 done;
+        skip ())
   in
-  while !i < n do
-    let c = src.[!i] in
-    if c = '\n' then (
-      incr i;
-      incr line;
-      line_start := !i)
-    else if c = ' ' || c = '\t' || c = '\r' then incr i
-    else if starts_with "--" !i && not (starts_with "-->" !i) then
-      while !i < n && src.[!i] <> '\n' do incr i done
-    else if is_digit c then (
-      let s = !i in
-      while !i < n && is_digit src.[!i] do incr i done;
-      emit (INT (int_of_string (String.sub src s (!i - s)))) s !i)
+  skip ();
+  let start = s.off in
+  let mk tok = { tok; line = s.line; col = start - s.line_start + 1; start; stop = s.off } in
+  let scan p = while s.off < n && p src.[s.off] do s.off <- s.off + 1 done in
+  if start >= n then mk EOF
+  else
+    let c = src.[start] in
+    if is_digit c then (
+      scan is_digit;
+      mk (INT (int_of_string (String.sub src start (s.off - start)))))
     else if is_ident_start c then (
-      let s = !i in
-      while !i < n && is_ident_char src.[!i] do incr i done;
-      emit (IDENT (String.sub src s (!i - s))) s !i)
+      scan is_ident_char;
+      mk (IDENT (String.sub src start (s.off - start))))
     else if is_op_char c then (
-      let s = !i in
-      let op =
-        match List.find_opt (fun o -> starts_with o s) multi_ops with
-        | Some o -> o
-        | None -> String.make 1 c
-      in
-      i := s + String.length op;
-      emit (OP op) s !i)
-    else
-      let s = !i in
-      incr i;
+      if s.munch then scan is_op_char
+      else
+        s.off <-
+          start
+          + String.length
+              (Option.value ~default:(String.make 1 c)
+                 (List.find_opt (fun o -> starts_with o start) s.ops));
+      mk (OP (String.sub src start (s.off - start))))
+    else (
+      s.off <- start + 1;
       let tok =
         match c with
         | '(' -> LPAREN
@@ -94,22 +121,45 @@ let tokenize (src : string) : token array =
         | ',' -> COMMA
         | '`' -> BACKTICK
         | _ ->
-            raise
-              (Error (!line, s - !line_start + 1, Printf.sprintf "unexpected character '%c'" c))
+            raise (Error (s.line, start - s.line_start + 1, Printf.sprintf "unexpected character '%c'" c))
       in
-      emit tok s !i
+      mk tok)
+
+let fill s i =
+  while s.len <= i && (s.len = 0 || s.buf.(s.len - 1).tok <> EOF) do
+    let tk = lex_one s in
+    if s.len = Array.length s.buf then
+      s.buf <- Array.append s.buf (Array.make (max 64 s.len) tk);
+    s.buf.(s.len) <- tk;
+    s.len <- s.len + 1
   done;
-  emit EOF n n;
-  Array.of_list (List.rev !toks)
+  s.buf.(min i (s.len - 1))
 
-(* A cursor over the token array, shared by all the parsers. *)
-type stream = { src : string; toks : token array; mutable pos : int }
+(* Throw away tokens lexed past the cursor, so they are lexed again under
+   new rules. *)
+let relex s =
+  if s.len > s.pos then (
+    let tk = s.buf.(s.pos) in
+    s.off <- tk.start;
+    s.line <- tk.line;
+    s.line_start <- tk.start - tk.col + 1;
+    s.len <- s.pos)
 
-let stream_of_string src = { src; toks = tokenize src; pos = 0 }
-let peek s = s.toks.(s.pos)
-let peek2 s = s.toks.(min (s.pos + 1) (Array.length s.toks - 1))
+let set_munch s b =
+  if s.munch <> b then (
+    s.munch <- b;
+    relex s)
+
+let add_ops s ops =
+  let ops = List.filter (fun o -> String.length o > 1 && not (List.mem o s.ops)) ops in
+  if ops <> [] then (
+    s.ops <- List.sort (fun a b -> compare (String.length b) (String.length a)) (ops @ s.ops);
+    relex s)
+
+let peek s = fill s s.pos
+let peek2 s = fill s (s.pos + 1)
 let advance s = if (peek s).tok <> EOF then s.pos <- s.pos + 1
-let error_at tk msg = raise (Error (tk.line, tk.col, msg))
+let error_at (tk : token) msg = raise (Error (tk.line, tk.col, msg))
 
 let expect s tok =
   let tk = peek s in
@@ -119,13 +169,13 @@ let expect s tok =
       (Printf.sprintf "expected '%s' but found '%s'" (tok_to_string tok) (tok_to_string tk.tok))
 
 (* Is [tk] directly after the previous token, with no whitespace? *)
-let adjacent s tk = s.pos > 0 && s.toks.(s.pos - 1).stop = tk.start
+let adjacent s (tk : token) = s.pos > 0 && s.buf.(s.pos - 1).stop = tk.start
 
 (* The source text of tokens [from, s.pos), with whitespace collapsed. *)
 let source_since s from =
   if s.pos <= from then ""
   else
-    let a = s.toks.(from).start and b = s.toks.(s.pos - 1).stop in
+    let a = s.buf.(from).start and b = s.buf.(s.pos - 1).stop in
     String.sub s.src a (b - a)
     |> String.split_on_char '\n'
     |> List.map String.trim

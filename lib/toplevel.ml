@@ -399,6 +399,17 @@ let run_command lang out cmd s =
   | "show" -> out ("  " ^ show lang (M.eval g [] (m_expr lang s)))
   | _ -> assert false
 
+(* Inside declarations, a run of operator characters is one symbol. *)
+let declaring s f =
+  set_munch s true;
+  Fun.protect ~finally:(fun () -> set_munch s false) f
+
+(* The grammar's operators become symbols for the rest of the file. *)
+let learn_operators lang s =
+  let g = lang.R.grammar in
+  let is_op o = o <> "" && String.for_all is_op_char o in
+  add_ops s (List.filter is_op (G.literals g @ List.of_seq (Hashtbl.to_seq_keys g.G.fixity)))
+
 let run_string ?(out = print_endline) lang src =
   let s = stream_of_string src in
   let rec loop () =
@@ -407,11 +418,13 @@ let run_string ?(out = print_endline) lang src =
     | EOF -> ()
     | IDENT "grammar" ->
         advance s;
-        parse_grammar lang s;
+        declaring s (fun () -> parse_grammar lang s);
+        learn_operators lang s;
         loop ()
     | IDENT "fixity" ->
         advance s;
-        parse_fixity lang s;
+        declaring s (fun () -> parse_fixity lang s);
+        learn_operators lang s;
         loop ()
     | IDENT "rule" ->
         advance s;

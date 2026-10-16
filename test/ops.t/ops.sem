@@ -1,0 +1,19 @@
+-- Operators come from the grammar, not from the runtime.
+
+grammar
+  e ::= n | e <+> e | e |> e | ~~ e
+  n ::= int
+
+fixity  infixl 1 |>   infixl 2 <+>   prefix 3 ~~
+
+rule add   n1 <+> n2 -> n        if n = n1 + n2
+rule pipe  n1 |> n2  -> n        if n = n1 * n2
+rule neg   ~~ n1     -> n        if n = 0 - n1
+rule left  e1 <+> e2 -> e1' <+> e2  if e1 -> e1'
+rule right n1 <+> e2 -> n1 <+> e2'  if e2 -> e2'
+rule pl    e1 |> e2  -> e1' |> e2   if e1 -> e1'
+rule pr    n1 |> e2  -> n1 |> e2'   if e2 -> e2'
+rule ng    ~~ e1     -> ~~ e1'      if e1 -> e1'
+
+-- written without spaces: the tokenizer splits runs using the grammar's symbols
+trace 1<+>2|>~~3<+>4
