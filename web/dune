@@ -1,0 +1,22 @@
+(executable
+ (name circ_js)
+ (modes js)
+ (libraries circ js_of_ocaml))
+
+(rule
+ (alias runtest)
+ (action
+  (run node %{dep:smoke.js} %{dep:circ_js.bc.js} %{dep:../test/par.t/par.sem})))
+
+(rule
+ (targets examples.js)
+ (deps
+  gen_examples.js
+  (:sems ../test/l1.t/l1.sem ../test/par.t/par.sem ../test/ctx.t/ctx.sem ../test/ops.t/ops.sem))
+ (action
+  (with-stdout-to examples.js (run node gen_examples.js %{sems}))))
+
+; `dune build @site` puts a ready-to-open page in _build/default/web/
+(alias
+ (name site)
+ (deps index.html style.css app.js examples.js circ_js.bc.js))

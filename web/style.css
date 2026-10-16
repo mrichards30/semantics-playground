@@ -1,0 +1,174 @@
+:root {
+  --paper: #fbfaf6;
+  --ink: #1d1c1a;
+  --muted: #6f6b63;
+  --rule: #dcd8ce;
+  --hover: #f1eee6;
+  --accent: #7a2e1f;
+  --error: #9b1c1c;
+  --serif: "EB Garamond", Garamond, "Times New Roman", serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1b1a18;
+    --ink: #e6e2d8;
+    --muted: #9a958a;
+    --rule: #3a3833;
+    --hover: #26241f;
+    --accent: #d98b6f;
+    --error: #f08080;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 0.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+h1 {
+  margin: 0;
+  font-weight: 500;
+  font-size: 1.5rem;
+  letter-spacing: 0.01em;
+}
+
+h2, h3 {
+  margin: 1.5rem 0 0.5rem;
+  font-weight: 400;
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+h2 { font-size: 1.15rem; }
+h3 { font-size: 1rem; }
+section > h2:first-child { margin-top: 0; }
+
+.meta { font-variant: normal; letter-spacing: 0; font-style: italic; font-size: 0.95rem; }
+
+nav label { font-variant: small-caps; letter-spacing: 0.05em; color: var(--muted); }
+
+main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2.5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+}
+
+@media (max-width: 900px) {
+  main { grid-template-columns: minmax(0, 1fr); }
+}
+
+textarea, select, pre, .term {
+  font-family: var(--mono);
+  font-size: 13.5px;
+  color: var(--ink);
+  font-variant-ligatures: none;   /* show >= and -> exactly as typed */
+}
+
+textarea {
+  width: 100%;
+  min-height: 70vh;
+  padding: 0.75rem;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  line-height: 1.55;
+  resize: vertical;
+  tab-size: 2;
+}
+textarea.program { min-height: 0; }
+textarea:focus, select:focus, button:focus-visible { outline: 1px solid var(--muted); }
+
+select {
+  background: transparent;
+  border: 1px solid var(--rule);
+  padding: 0.15rem 0.3rem;
+  margin-left: 0.4rem;
+}
+
+.bar {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+button {
+  font-family: var(--serif);
+  font-size: 1rem;
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 0.1rem 0.7rem 0.2rem;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { background: var(--hover); }
+button:disabled { color: var(--muted); cursor: default; opacity: 0.6; }
+button.on { border-color: var(--ink); }
+
+.status { color: var(--muted); font-style: italic; }
+.status.error { color: var(--error); font-style: normal; font-family: var(--mono); font-size: 13px; }
+
+pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
+
+.current {
+  padding: 0.9rem 1rem;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  font-size: 15px;
+}
+
+ol, ul { margin: 0; padding: 0; list-style: none; }
+
+.choices li, .trace li, .finals li {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.choices li { cursor: pointer; }
+.choices li:hover, .trace li:hover { background: var(--hover); }
+.choices li.empty, .finals li { cursor: default; grid-template-columns: minmax(0, 1fr); }
+.choices li.empty:hover { background: none; }
+.choices li.empty { color: var(--muted); font-style: italic; }
+
+.trace li { cursor: pointer; grid-template-columns: 2.5rem 7rem minmax(0, 1fr); }
+.trace li.here { background: var(--hover); }
+.trace .n { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+
+.rule {
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.term { white-space: pre-wrap; word-break: break-word; }
+.branch { color: var(--muted); font-style: italic; font-size: 0.9rem; margin-left: 0.4rem; }

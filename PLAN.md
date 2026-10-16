@@ -110,13 +110,18 @@ is supported too and compiles to the same `step`.
 
 ## Build order
 
-1. Core: terms, grammar-driven Pratt reader, matcher (categories, repeated
-   names, contexts), premise solver, `successors`, `run`.
-2. Text front end + tests: L1 (Sewell), L1 + parallel, context-style L1,
-   metalogic (`arb`, chained comparisons, stores, sets).
-3. `js_of_ocaml` build exposing the runtime API.
-4. Minimal UI: configuration graph, play/step/branch.
+1. ~~Core: terms, grammar-driven Pratt reader, matcher (categories, repeated
+   names, contexts), premise solver, `successors`, `run`.~~ Done.
+2. ~~Text front end + tests: L1 (Sewell), L1 + parallel, context-style L1,
+   metalogic (`arb`, chained comparisons, stores, sets).~~ Done (`test/`).
+3. ~~`js_of_ocaml` build exposing the runtime API.~~ Done (`web/circ_js.ml`,
+   checked by `web/smoke.js` under `dune test`).
+4. Minimal UI: play/step/branch, trace, run all — done (`dune build @site`,
+   open `_build/default/web/index.html`). Still to do: configuration graph.
 5. LaTeX rule editor.
+
+Development uses a project-local opam switch (`_opam/`, OCaml 5.5):
+`opam switch create . ocaml-base-compiler.5.5.0 && opam install dune js_of_ocaml-compiler js_of_ocaml`.
 
 ## Open
 

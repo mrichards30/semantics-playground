@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>circular-imp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>circular-imp</h1>
+  <nav>
+    <label>example
+      <select id="example"></select>
+    </label>
+  </nav>
+</header>
+
+<main>
+  <section id="language">
+    <h2>Language</h2>
+    <textarea id="source" spellcheck="false" autocomplete="off"></textarea>
+    <div class="bar">
+      <button id="load">load</button>
+      <span id="load-status" class="status"></span>
+    </div>
+  </section>
+
+  <section id="machine">
+    <h2>Program</h2>
+    <textarea id="program" class="program" spellcheck="false" rows="2"></textarea>
+    <div class="bar">
+      <button id="start">start</button>
+      <span id="program-status" class="status"></span>
+    </div>
+
+    <div id="session" hidden>
+      <h2>Configuration <span id="step-count" class="meta"></span></h2>
+      <pre id="current" class="term current"></pre>
+
+      <div class="bar controls">
+        <button id="reset" title="back to the start">reset</button>
+        <button id="back" title="undo one step">back</button>
+        <button id="step" title="take the only successor">step</button>
+        <button id="play" title="step until a branch or the end">play</button>
+        <button id="run" title="explore every path">run all</button>
+      </div>
+
+      <h3>Next</h3>
+      <ol id="next" class="choices"></ol>
+
+      <h3>Trace</h3>
+      <ol id="trace" class="trace"></ol>
+
+      <div id="finals-box" hidden>
+        <h3>Final configurations <span id="finals-meta" class="meta"></span></h3>
+        <ul id="finals" class="finals"></ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="circ_js.bc.js"></script>
+<script src="examples.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

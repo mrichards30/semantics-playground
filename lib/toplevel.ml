@@ -410,8 +410,21 @@ let learn_operators lang s =
   let is_op o = o <> "" && String.for_all is_op_char o in
   add_ops s (List.filter is_op (G.literals g @ List.of_seq (Hashtbl.to_seq_keys g.G.fixity)))
 
-let run_string ?(out = print_endline) lang src =
+(* A stream that already knows the operators of the grammar loaded so far. *)
+let stream_for lang src =
   let s = stream_of_string src in
+  learn_operators lang s;
+  s
+
+(* Parse a single concrete configuration, e.g. (x := 1, {x |-> 0}). *)
+let parse_config lang src =
+  let s = stream_for lang src in
+  let t = O.to_term (O.parse_expr lang.R.grammar O.Concrete s 0) in
+  if (peek s).tok <> EOF then fail (peek s) "unexpected '%s'" (tok_to_string (peek s).tok);
+  t
+
+let run_string ?(out = print_endline) lang src =
+  let s = stream_for lang src in
   let rec loop () =
     let tk = peek s in
     match tk.tok with
