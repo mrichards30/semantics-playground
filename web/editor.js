@@ -253,8 +253,7 @@ const Editor = (() => {
     if (editing === key || errs) {
       card.classList.add("editing");
       const head = el("div", "row head",
-        slot(`${key}:name`, r.name, (v) => (r.name = v), { cls: "name", placeholder: "name" }),
-        button("delete", "delete this rule", () => { model.rules.splice(i, 1); editing = null; changed(); }));
+        slot(`${key}:name`, r.name, (v) => (r.name = v), { cls: "name", placeholder: "name" }));
       const prems = el("div", "premises");
       r.premises.forEach((p, j) => {
         const s = slot(`${key}:p:${j}`, p, (v) => (r.premises[j] = v), {
@@ -275,22 +274,109 @@ const Editor = (() => {
       Render.katex(Render.rule(r, info), math);
       card.append(math);
     }
-    card.append(problemList(key));
+    card.append(problemList(key), tools(card, i));
     card.onclick = () => { if (editing !== key) { editing = key; refresh(); } };
+    dropTarget(card, (e) => {
+      const box = card.getBoundingClientRect();
+      return e.clientY < box.top + box.height / 2 ? i : i + 1;
+    });
     return card;
+  }
+
+  // --- arranging rules --------------------------------------------------
+
+  const freshName = (base) => {
+    const taken = new Set(model.rules.map((r) => r.name));
+    let n = base;
+    while (taken.has(n)) n += "'";
+    return n;
+  };
+
+  function insertRule(at) {
+    let k = model.rules.length + 1;
+    while (model.rules.some((r) => r.name === `rule${k}`)) k++;
+    model.rules.splice(at, 0, { name: `rule${k}`, conclusion: "", premises: [] });
+    editing = `r:${at}`;
+    changed();
+    focusSlot(`r:${at}:c`, 0, 0);
+  }
+
+  // Shown when hovering a rule: move (drag), duplicate, delete.
+  function tools(card, i) {
+    const r = model.rules[i];
+    // a plain element: buttons can't be dragged in every browser
+    const move = el("span", "handle", "move");
+    move.title = "drag to reorder";
+    move.draggable = true;
+    move.onclick = (e) => e.stopPropagation();
+    move.ondragstart = (e) => {
+      dragging = i;
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", r.name);
+      e.dataTransfer.setDragImage(card, 16, 16);
+      card.classList.add("dragging");
+    };
+    move.ondragend = () => { dragging = null; clearDropMarks(); card.classList.remove("dragging"); };
+    const dup = button("duplicate", "duplicate this rule", () => {
+      model.rules.splice(i + 1, 0, { ...r, name: freshName(r.name), premises: r.premises.slice() });
+      editing = `r:${i + 1}`;
+      changed();
+    });
+    const del = button("delete", "delete this rule", () => {
+      model.rules.splice(i, 1);
+      editing = null;
+      changed();
+    });
+    return el("div", "tools", move, dup, del);
+  }
+
+  // The gap between two rules: hover to insert a rule there; also a place
+  // to drop a rule being moved.
+  function separator(at) {
+    const sep = el("div", "sep", button("+ insert rule", "insert a rule here", () => insertRule(at)));
+    dropTarget(sep, () => at);
+    return sep;
+  }
+
+  let dragging = null;   // index of the rule being moved
+
+  function clearDropMarks() {
+    for (const m of root().querySelectorAll(".drop-before, .drop-after, .drop-here"))
+      m.classList.remove("drop-before", "drop-after", "drop-here");
+  }
+
+  // [target] gives the index a dragged rule would land at.
+  function dropTarget(node, target) {
+    node.addEventListener("dragover", (e) => {
+      if (dragging === null) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      clearDropMarks();
+      const at = target(e);
+      if (node.classList.contains("sep")) node.classList.add("drop-here");
+      else node.classList.add(at === Number(node.dataset.card.slice(2)) ? "drop-before" : "drop-after");
+    });
+    node.addEventListener("drop", (e) => {
+      if (dragging === null) return;
+      e.preventDefault();
+      let at = target(e);
+      const [moved] = model.rules.splice(dragging, 1);
+      if (at > dragging) at--;
+      model.rules.splice(at, 0, moved);
+      dragging = null;
+      editing = null;
+      changed();
+    });
   }
 
   function refresh() {
     const r = root();
     const focused = document.activeElement && document.activeElement.dataset.key;
     const sel = focused && [document.activeElement.selectionStart, document.activeElement.selectionEnd];
-    r.replaceChildren(grammarCard(), ...model.rules.map(ruleCard),
-      el("div", "add-rule", button("+ rule", "add a rule", () => {
-        model.rules.push({ name: `rule${model.rules.length + 1}`, conclusion: "", premises: [] });
-        editing = `r:${model.rules.length - 1}`;
-        changed();
-        focusSlot(`r:${model.rules.length - 1}:c`, 0, 0);
-      })));
+    const cards = [grammarCard()];
+    model.rules.forEach((rule, i) => cards.push(separator(i), ruleCard(rule, i)));
+    cards.push(separator(model.rules.length));
+    r.replaceChildren(...cards);
     if (focused) {
       const ta = r.querySelector(`textarea[data-key="${focused}"]`);
       if (ta) { ta.focus(); ta.setSelectionRange(sel[0], sel[1]); }

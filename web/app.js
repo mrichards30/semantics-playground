@@ -5,7 +5,6 @@ const $ = (id) => document.getElementById(id);
 const state = {
   path: [],      // [{id, rule}] — rule is how we got here (null at the start)
   cursor: 0,     // index into path of the configuration being shown
-  timer: null,
 };
 
 // --- language ---------------------------------------------------------
@@ -19,7 +18,6 @@ const languageText = () => (mode === "rules" ? Editor.text() : $("source").value
 let loadedText = null;
 
 function ensureLoaded() {
-  stop();
   const text = languageText();
   if (text === loadedText) return true;
   const banner = $("lang-banner");
@@ -124,7 +122,6 @@ function setMode(m) {
 // --- program ----------------------------------------------------------
 
 function start() {
-  stop();
   if (!ensureLoaded()) return;
   const r = circ.config($("program").value.trim());
   const status = $("program-status");
@@ -137,7 +134,6 @@ function start() {
   say("");
   state.path = [{ id: r.id, rule: null }];
   state.cursor = 0;
-  $("finals-box").hidden = true;
   $("session").hidden = false;
   render();
 }
@@ -152,66 +148,11 @@ function take(succ) {
   render();
 }
 
-// What to do when there is more than one successor.
-const policy = () => $("policy").value;
-
-function choose(succs) {
-  if (succs.length === 1) return succs[0];
-  if (succs.length > 1 && policy() === "random") return succs[Math.floor(Math.random() * succs.length)];
-  return null;
-}
-
 function say(msg) { $("machine-status").textContent = msg; }
 
-// Take one step; returns whether it moved.
-function step() {
-  const succs = circ.successors(here());
-  const s = choose(succs);
-  if (s) { take(s); return true; }
-  say(succs.length === 0 ? "finished: no rule applies" : `branch: ${succs.length} successors, choose one below`);
-  return false;
-}
-
-function back() {
-  if (state.cursor > 0) { state.cursor--; render(); }
-}
-
 function reset() {
-  stop();
   state.cursor = 0;
   render();
-}
-
-// Keep stepping until there is nothing to do (or, when asking, a branch).
-function play() {
-  if (state.timer) return stop();
-  if (!step()) return;
-  $("play").classList.add("on");
-  $("play").textContent = "pause";
-  state.timer = setInterval(() => { if (!step()) stop(); }, 350);
-}
-
-function stop() {
-  if (state.timer) clearInterval(state.timer);
-  state.timer = null;
-  $("play").classList.remove("on");
-  $("play").textContent = "play";
-}
-
-function runAll() {
-  stop();
-  const r = circ.run(here());
-  const list = $("finals");
-  list.replaceChildren();
-  if (r.finals.length === 0) {
-    list.append(li("empty", text("none — every path loops")));
-  }
-  for (const id of r.finals) list.append(li(null, term(circ.show(id))));
-  $("finals-meta").textContent =
-    `${r.finals.length} reachable, ${r.states} configurations explored` +
-    (r.truncated ? " (stopped early)" : "");
-  $("finals-box").hidden = false;
-  say("");
 }
 
 // --- rendering --------------------------------------------------------
@@ -240,7 +181,7 @@ function render() {
   for (const s of succs) {
     const item = li(null, rule(s.rule), term(circ.show(s.target)));
     item.title = s.bindings.map(([x, v]) => `${x} = ${v}`).join("\n");
-    item.onclick = () => { stop(); take(s); };
+    item.onclick = () => take(s);
     next.append(item);
   }
 
@@ -255,16 +196,14 @@ function render() {
     }
     const item = li(i === state.cursor ? "here" : null,
       el("span", "n", String(i)), label, term(circ.show(p.id)));
-    item.onclick = () => { stop(); state.cursor = i; render(); };
+    item.onclick = () => { state.cursor = i; render(); };
     trace.append(item);
   });
   trace.querySelector(".here")?.scrollIntoView({ block: "nearest" });
 
-  $("back").disabled = state.cursor === 0;
   $("reset").disabled = state.cursor === 0;
-  $("step").disabled = succs.length === 0 || (succs.length > 1 && policy() === "ask");
-  $("play").disabled = succs.length === 0 && !state.timer;
-  if (succs.length === 0 && state.cursor > 0) say("finished: no rule applies");
+  say(succs.length === 0 ? "finished: no rule applies"
+    : succs.length > 1 ? `${succs.length} successors: choose one` : "");
 }
 
 // --- examples ---------------------------------------------------------
@@ -287,12 +226,7 @@ function init() {
   $("page-language").onclick = () => showPage("language");
   $("page-run").onclick = () => showPage("run");
   $("start").onclick = start;
-  $("step").onclick = () => { stop(); step(); };
-  $("back").onclick = () => { stop(); back(); };
   $("reset").onclick = reset;
-  $("play").onclick = play;
-  $("run").onclick = runAll;
-  $("policy").onchange = () => render();
   $("program").onkeydown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); start(); }
   };
