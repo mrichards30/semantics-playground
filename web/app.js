@@ -14,22 +14,53 @@ let mode = "rules";   // or "text"
 
 const languageText = () => (mode === "rules" ? Editor.text() : $("source").value);
 
-function loadLanguage() {
+// The run page always uses the latest language without errors: it is
+// loaded when the run page is shown, if it has changed.
+let loadedText = null;
+
+function ensureLoaded() {
   stop();
-  const r = circ.load(languageText());
-  const status = $("load-status");
-  if (!r.ok) {
-    status.className = "status error";
-    status.textContent = `line ${r.line}, col ${r.col}: ${r.message}`;
+  const text = languageText();
+  if (text === loadedText) return true;
+  const banner = $("lang-banner");
+  const errors = circ.check(text).diagnostics.filter((d) => d.severity === "error").length;
+  const r = errors ? null : circ.load(text);
+  if (!r || !r.ok) {
+    banner.className = "status error-banner";
+    banner.replaceChildren(
+      `The language has ${errors || 1} error${errors > 1 ? "s" : ""}. `,
+      link("Fix them", () => showPage("language")));
     $("start").disabled = true;
+    $("session").hidden = true;
+    loadedText = null;
     return false;
   }
+  loadedText = text;
   const n = circ.rules().length;
-  status.className = "status";
-  status.textContent = `loaded, ${n} rule${n === 1 ? "" : "s"}`;
+  banner.className = "status";
+  banner.textContent = `${n} rule${n === 1 ? "" : "s"}`;
   $("start").disabled = false;
   $("session").hidden = true;
   return true;
+}
+
+function link(label, fn) {
+  const a = document.createElement("a");
+  a.href = "#";
+  a.textContent = label;
+  a.onclick = (e) => { e.preventDefault(); fn(); };
+  return a;
+}
+
+let page = "language";
+
+function showPage(p) {
+  page = p;
+  $("language").hidden = p !== "language";
+  $("machine").hidden = p !== "run";
+  $("page-language").classList.toggle("on", p === "language");
+  $("page-run").classList.toggle("on", p === "run");
+  if (p === "run" && ensureLoaded() && $("session").hidden && $("program").value.trim()) start();
 }
 
 function showProblems({ errors, warnings }) {
@@ -94,6 +125,7 @@ function setMode(m) {
 
 function start() {
   stop();
+  if (!ensureLoaded()) return;
   const r = circ.config($("program").value.trim());
   const status = $("program-status");
   if (!r.ok) {
@@ -242,7 +274,9 @@ function showExample(i) {
   if (mode === "text") setMode("rules");
   Editor.load(ex.language);
   $("program").value = ex.program;
-  if (loadLanguage()) start();
+  loadedText = null;
+  $("session").hidden = true;
+  if (page === "run") showPage("run");
 }
 
 function init() {
@@ -250,7 +284,8 @@ function init() {
   EXAMPLES.forEach((ex, i) => select.append(new Option(ex.name, i)));
   select.onchange = () => showExample(select.value);
 
-  $("load").onclick = loadLanguage;
+  $("page-language").onclick = () => showPage("language");
+  $("page-run").onclick = () => showPage("run");
   $("start").onclick = start;
   $("step").onclick = () => { stop(); step(); };
   $("back").onclick = () => { stop(); back(); };
@@ -262,13 +297,13 @@ function init() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); start(); }
   };
   $("source").onkeydown = (e) => {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); loadLanguage(); }
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); showPage("run"); }
   };
   $("source").oninput = () => { clearTimeout(textTimer); textTimer = setTimeout(checkText, 200); };
   $("tab-rules").onclick = () => setMode("rules");
   $("tab-text").onclick = () => setMode("text");
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && mode === "rules") { e.preventDefault(); loadLanguage(); }
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && page === "language") { e.preventDefault(); showPage("run"); }
   });
 
   select.value = 1;

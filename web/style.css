@@ -36,13 +36,22 @@ body {
 header {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  max-width: 1280px;
+  gap: 2rem;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 1.5rem 1rem 0.5rem;
   border-bottom: 1px solid var(--rule);
 }
+
+.pages { display: flex; gap: 0.25rem; flex: 1; }
+.page-tab {
+  border: none;
+  font-size: 1.1rem;
+  color: var(--muted);
+  padding: 0 0.5rem;
+}
+.page-tab.on { color: var(--ink); text-decoration: underline; text-underline-offset: 6px; }
+.example { font-variant: small-caps; letter-spacing: 0.05em; color: var(--muted); }
 
 h1 {
   margin: 0;
@@ -64,20 +73,21 @@ section > h2:first-child { margin-top: 0; }
 
 .meta { font-variant: normal; letter-spacing: 0; font-style: italic; font-size: 0.95rem; }
 
-nav label { font-variant: small-caps; letter-spacing: 0.05em; color: var(--muted); }
 
 main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 2.5rem;
-  max-width: 1280px;
+  max-width: 1000px;
   margin: 0 auto;
-  padding: 1.5rem 1rem 4rem;
+  padding: 1.25rem 1rem 4rem;
 }
+main > section[hidden] { display: none; }
 
-@media (max-width: 900px) {
-  main { grid-template-columns: minmax(0, 1fr); }
-}
+.subtabs { margin: 0 0 0.75rem; }
+.subtabs .tab { font-size: 1rem; }
+.subtabs #problems { margin-left: auto; }
+
+#lang-banner { margin-bottom: 0.5rem; }
+.error-banner { color: var(--error); font-style: normal; }
+.error-banner a { color: inherit; }
 
 textarea, select, pre, .term {
   font-family: var(--mono);
@@ -178,7 +188,6 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
 :root { --warn: #8a6d1a; }
 @media (prefers-color-scheme: dark) { :root { --warn: #d8b45a; } }
 
-.tabs { margin-left: 0.75rem; }
 .tab {
   border: none;
   padding: 0 0.35rem;
