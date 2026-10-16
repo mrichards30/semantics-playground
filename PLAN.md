@@ -189,5 +189,8 @@ Development uses a project-local opam switch (`_opam/`, OCaml 5.5):
   expansion, fuel settings).
 - Negated premises ("no rule applies", "is not a value"): useful, but needs
   stratification; left out for now.
+- A lone `|` is always the grammar's alternative separator, so an object
+  language can't use `|` itself as an operator. Fix: quoted literals in
+  productions (`e "|" e`).
 - Rename `store` to `map`.
 - Whether users ever need helper functions (`fun`).
