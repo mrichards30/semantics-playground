@@ -289,3 +289,6 @@ button.small:hover { color: var(--ink); }
 
 #text-view textarea { min-height: 65vh; }
 .status.has-errors { color: var(--error); }
+
+.policy { margin-left: auto; font-variant: small-caps; letter-spacing: 0.05em; color: var(--muted); }
+#machine-status { min-height: 1.4em; margin-top: 0.35rem; }

@@ -102,6 +102,7 @@ function start() {
     return;
   }
   status.textContent = "";
+  say("");
   state.path = [{ id: r.id, rule: null }];
   state.cursor = 0;
   $("finals-box").hidden = true;
@@ -112,15 +113,31 @@ function start() {
 const here = () => state.path[state.cursor].id;
 
 function take(succ) {
+  say("");
   state.path = state.path.slice(0, state.cursor + 1);
   state.path.push({ id: succ.target, rule: succ.rule });
   state.cursor++;
   render();
 }
 
+// What to do when there is more than one successor.
+const policy = () => $("policy").value;
+
+function choose(succs) {
+  if (succs.length === 1) return succs[0];
+  if (succs.length > 1 && policy() === "random") return succs[Math.floor(Math.random() * succs.length)];
+  return null;
+}
+
+function say(msg) { $("machine-status").textContent = msg; }
+
+// Take one step; returns whether it moved.
 function step() {
   const succs = circ.successors(here());
-  if (succs.length === 1) take(succs[0]);
+  const s = choose(succs);
+  if (s) { take(s); return true; }
+  say(succs.length === 0 ? "finished: no rule applies" : `branch: ${succs.length} successors, choose one below`);
+  return false;
 }
 
 function back() {
@@ -133,16 +150,13 @@ function reset() {
   render();
 }
 
-// Follow the only successor until there is a choice or nothing left.
+// Keep stepping until there is nothing to do (or, when asking, a branch).
 function play() {
   if (state.timer) return stop();
+  if (!step()) return;
   $("play").classList.add("on");
   $("play").textContent = "pause";
-  state.timer = setInterval(() => {
-    const succs = circ.successors(here());
-    if (succs.length !== 1) return stop();
-    take(succs[0]);
-  }, 350);
+  state.timer = setInterval(() => { if (!step()) stop(); }, 350);
 }
 
 function stop() {
@@ -165,6 +179,7 @@ function runAll() {
     `${r.finals.length} reachable, ${r.states} configurations explored` +
     (r.truncated ? " (stopped early)" : "");
   $("finals-box").hidden = false;
+  say("");
 }
 
 // --- rendering --------------------------------------------------------
@@ -215,8 +230,9 @@ function render() {
 
   $("back").disabled = state.cursor === 0;
   $("reset").disabled = state.cursor === 0;
-  $("step").disabled = succs.length !== 1;
+  $("step").disabled = succs.length === 0 || (succs.length > 1 && policy() === "ask");
   $("play").disabled = succs.length === 0 && !state.timer;
+  if (succs.length === 0 && state.cursor > 0) say("finished: no rule applies");
 }
 
 // --- examples ---------------------------------------------------------
@@ -241,6 +257,7 @@ function init() {
   $("reset").onclick = reset;
   $("play").onclick = play;
   $("run").onclick = runAll;
+  $("policy").onchange = () => render();
   $("program").onkeydown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); start(); }
   };

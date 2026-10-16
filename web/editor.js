@@ -46,9 +46,22 @@ const Editor = (() => {
     return { text, slots, cards };
   }
 
+  // A file may define a nonterminal more than once (an extension adding
+  // syntax); the meaning is the union, so show it as one row.
+  function mergeRows(rows) {
+    const out = [];
+    const at = new Map();
+    for (const row of rows) {
+      const m = row.match(/^\s*([A-Za-z_][A-Za-z0-9_']*)\s*::=\s*(.*)$/);
+      if (m && at.has(m[1])) out[at.get(m[1])] += " | " + m[2];
+      else { if (m) at.set(m[1], out.length); out.push(row); }
+    }
+    return out;
+  }
+
   function fromOutline(o) {
     model = {
-      grammar: o.grammar.slice(),
+      grammar: mergeRows(o.grammar),
       fixity: o.fixity.join("  "),
       rules: o.rules.map((r) => ({ name: r.name, conclusion: r.conclusion, premises: r.premises.slice() })),
     };

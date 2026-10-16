@@ -58,6 +58,18 @@
         <button id="step" title="take the only successor">step</button>
         <button id="play" title="step until a branch or the end">play</button>
         <button id="run" title="explore every path">run all</button>
+        <label class="policy">at a branch
+          <select id="policy">
+            <option value="random">pick at random</option>
+            <option value="ask">stop and ask</option>
+          </select>
+        </label>
+      </div>
+      <div id="machine-status" class="status"></div>
+
+      <div id="finals-box" hidden>
+        <h3>Final configurations <span id="finals-meta" class="meta"></span></h3>
+        <ul id="finals" class="finals"></ul>
       </div>
 
       <h3>Next</h3>
@@ -66,10 +78,6 @@
       <h3>Trace</h3>
       <ol id="trace" class="trace"></ol>
 
-      <div id="finals-box" hidden>
-        <h3>Final configurations <span id="finals-meta" class="meta"></span></h3>
-        <ul id="finals" class="finals"></ul>
-      </div>
     </div>
   </section>
 </main>
