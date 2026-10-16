@@ -104,7 +104,7 @@ const Render = (() => {
   function op(t, ctx) {
     if (t.text === "||") return ctx.meta ? "\\lor" : "\\parallel";
     if (t.text === "!" && ctx.grammar) return "{!}";
-    if (t.text === "|" && ctx.grammar) return "\\mid\\;";
+    if (t.text === "|" && ctx.grammar) return "\\;\\vert\\;";
     return TEX[t.text] || `\\mathbin{\\texttt{${escape(t.text)}}}`;
   }
 
