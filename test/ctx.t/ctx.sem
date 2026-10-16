@@ -1,0 +1,30 @@
+-- L1 in the evaluation-context style: one context grammar instead of
+-- congruence rules, plus parallel composition as two more productions of E.
+
+grammar
+  v ::= n | true | false | skip
+  e ::= v | l | e + e | e >= e | !l | l := e | e ; e
+      | if e then e else e | while e do e | e || e
+  E ::= [] | E + e | v + E | E >= e | v >= E | l := E | E ; e
+      | if E then e else e | E || e | e || E
+  l ::= name
+  n ::= int
+  s ::= store
+
+fixity  infixr 0 ||   infixr 1 ;   infix 2 :=   infix 3 >=   infixl 4 +   prefix 5 !
+
+rule plus   (E[n1 + n2], s)  -> (E[n], s)        if n = n1 + n2
+rule geq    (E[n1 >= n2], s) -> (E[v], s)        if v = (n1 >= n2)
+rule deref  (E[!l], s)       -> (E[n], s)        if n = s(l)
+rule assign (E[l := n], s)   -> (E[skip], s')    if l in dom s, s' = s[l |-> n]
+rule seq    (E[skip ; e], s) -> (E[e], s)
+rule if1    (E[if true then e1 else e2], s)  -> (E[e1], s)
+rule if2    (E[if false then e1 else e2], s) -> (E[e2], s)
+rule while  (E[while e1 do e2], s) -> (E[if e1 then (e2 ; while e1 do e2) else skip], s)
+rule par1   (E[skip || e], s) -> (E[e], s)
+rule par2   (E[e || skip], s) -> (E[e], s)
+
+step ((1 + 2) + (3 + 4), {})
+step (x := 1 + 2 ; y := 3, {x |-> 0, y |-> 0})
+run (x := 0 ; while 5 >= !x do x := !x + 1, {x |-> 99})
+run (x := !x + 1 || x := !x + 1, {x |-> 0})

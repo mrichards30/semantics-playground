@@ -1,0 +1,50 @@
+-- L1, with the rules as in Sewell's Semantics of Programming Languages notes.
+
+grammar
+  op ::= + | >=
+  v  ::= n | true | false | skip
+  e  ::= v | l | e op e | !l | l := e | e ; e
+       | if e then e else e | while e do e
+  l  ::= name
+  n  ::= int
+  s  ::= store
+
+fixity  infixr 1 ;   infix 2 :=   infix 3 >=   infixl 4 +   prefix 5 !
+
+rule op+     (n1 + n2, s)  -> (n, s)           if n = n1 + n2
+rule op>=    (n1 >= n2, s) -> (v, s)           if v = (n1 >= n2)
+rule op1     (e1 op e2, s) -> (e1' op e2, s')  if (e1, s) -> (e1', s')
+rule op2     (v op e2, s)  -> (v op e2', s')   if (e2, s) -> (e2', s')
+rule deref   (!l, s)       -> (n, s)           if l in dom s, n = s(l)
+rule assign1 (l := n, s)   -> (skip, s')       if l in dom s, s' = s[l |-> n]
+rule assign2 (l := e, s)   -> (l := e', s')    if (e, s) -> (e', s')
+rule seq1    (skip ; e2, s) -> (e2, s)
+rule seq2    (e1 ; e2, s)  -> (e1' ; e2, s')   if (e1, s) -> (e1', s')
+rule if1     (if true then e2 else e3, s)  -> (e2, s)
+rule if2     (if false then e2 else e3, s) -> (e3, s)
+rule if3     (if e1 then e2 else e3, s) -> (if e1' then e2 else e3, s')
+               if (e1, s) -> (e1', s')
+rule while   (while e1 do e2, s) -> (if e1 then (e2 ; while e1 do e2) else skip, s)
+
+-- The parallel extension: new syntax, a fixity, and four rules.
+
+grammar
+  e ::= e || e
+
+fixity  infixr 0 ||
+
+rule par1 (e1 || e2, s) -> (e1' || e2, s')  if (e1, s) -> (e1', s')
+rule par2 (e1 || e2, s) -> (e1 || e2', s')  if (e2, s) -> (e2', s')
+rule par3 (skip || e, s) -> (e, s)
+rule par4 (e || skip, s) -> (e, s)
+
+step (x := 1 || x := 2, {x |-> 0})
+
+-- a race
+run (x := 1 || x := 2, {x |-> 0})
+
+-- a lost update: each side reads x, then writes it
+run (x := !x + 1 || x := !x + 1, {x |-> 0})
+
+-- three threads
+run (x := 1 || x := 2 || x := 3, {x |-> 0})
