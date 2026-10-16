@@ -8,6 +8,7 @@
   --error: #9b1c1c;
   --serif: "EB Garamond", Garamond, "Times New Roman", serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -28,8 +29,8 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--serif);
-  font-size: 18px;
+  font-family: var(--sans);
+  font-size: 15px;
   line-height: 1.45;
 }
 
@@ -46,32 +47,30 @@ header {
 .pages { display: flex; gap: 0.25rem; flex: 1; }
 .page-tab {
   border: none;
-  font-size: 1.1rem;
+  font-size: 15px;
   color: var(--muted);
   padding: 0 0.5rem;
 }
 .page-tab.on { color: var(--ink); text-decoration: underline; text-underline-offset: 6px; }
-.example { font-variant: small-caps; letter-spacing: 0.05em; color: var(--muted); }
+.example { font-size: 13px; color: var(--muted); }
 
 h1 {
   margin: 0;
+  font-family: var(--serif);
   font-weight: 500;
-  font-size: 1.5rem;
-  letter-spacing: 0.01em;
+  font-size: 1.6rem;
 }
 
 h2, h3 {
   margin: 1.5rem 0 0.5rem;
-  font-weight: 400;
-  font-variant: small-caps;
-  letter-spacing: 0.06em;
+  font-weight: 600;
   color: var(--muted);
 }
-h2 { font-size: 1.15rem; }
-h3 { font-size: 1rem; }
+h2 { font-size: 14px; }
+h3 { font-size: 13px; }
 section > h2:first-child { margin-top: 0; }
 
-.meta { font-variant: normal; letter-spacing: 0; font-style: italic; font-size: 0.95rem; }
+.meta { font-weight: 400; font-style: italic; }
 
 
 main {
@@ -82,14 +81,14 @@ main {
 main > section[hidden] { display: none; }
 
 .subtabs { margin: 0 0 0.75rem; }
-.subtabs .tab { font-size: 1rem; }
+.subtabs .tab { font-size: 13px; }
 .subtabs #problems { margin-left: auto; }
 
 #lang-banner { margin-bottom: 0.5rem; }
 .error-banner { color: var(--error); font-style: normal; }
 .error-banner a { color: inherit; }
 
-textarea, select, pre, .term {
+textarea, pre, .term, .fixity-view {
   font-family: var(--mono);
   font-size: 13.5px;
   color: var(--ink);
@@ -111,6 +110,9 @@ textarea.program { min-height: 0; }
 textarea:focus, select:focus, button:focus-visible { outline: 1px solid var(--muted); }
 
 select {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink);
   background: transparent;
   border: 1px solid var(--rule);
   padding: 0.15rem 0.3rem;
@@ -126,22 +128,20 @@ select {
 }
 
 button {
-  font-family: var(--serif);
-  font-size: 1rem;
-  font-variant: small-caps;
-  letter-spacing: 0.05em;
+  font-family: var(--sans);
+  font-size: 13px;
   color: var(--ink);
   background: transparent;
   border: 1px solid var(--rule);
   border-radius: 2px;
-  padding: 0.1rem 0.7rem 0.2rem;
+  padding: 0.2rem 0.7rem;
   cursor: pointer;
 }
 button:hover:not(:disabled) { background: var(--hover); }
 button:disabled { color: var(--muted); cursor: default; opacity: 0.6; }
 button.on { border-color: var(--ink); }
 
-.status { color: var(--muted); font-style: italic; }
+.status { color: var(--muted); }
 .status.error { color: var(--error); font-style: normal; font-family: var(--mono); font-size: 13px; }
 
 pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
@@ -175,8 +175,7 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
 .trace .n { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
 
 .rule {
-  font-variant: small-caps;
-  letter-spacing: 0.04em;
+  font-size: 13px;
   color: var(--accent);
 }
 
@@ -192,7 +191,6 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
   border: none;
   padding: 0 0.35rem;
   color: var(--muted);
-  font-size: 1rem;
 }
 .tab.on { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
 
@@ -224,15 +222,15 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
 .row .slot { flex: 1; }
 .row.add { margin-top: 0.15rem; }
 .row .label {
-  font-variant: small-caps; letter-spacing: 0.05em; color: var(--muted);
-  padding-top: 0.2rem; min-width: 3.5rem;
+  font-size: 13px; color: var(--muted);
+  padding-top: 0.25rem; min-width: 3.5rem;
 }
 .head { justify-content: space-between; }
 .head .slot.name { flex: 0 1 12rem; }
 
 .bar-line { border-top: 1px solid var(--ink); margin: 0.45rem 0 0.35rem; }
 
-button.small { font-size: 0.9rem; padding: 0 0.45rem 0.1rem; color: var(--muted); }
+button.small { font-size: 12px; padding: 0.05rem 0.45rem; color: var(--muted); }
 button.small:hover { color: var(--ink); }
 
 /* A slot is a textarea over a mirror of its text. The mirror draws the
@@ -268,8 +266,6 @@ button.small:hover { color: var(--ink); }
   border-color: transparent;
   pointer-events: none;
 }
-.slot.name textarea { font-family: var(--serif); font-size: 1rem; font-variant: small-caps; }
-.slot.name .mirror { font-family: var(--serif); font-size: 1rem; font-variant: small-caps; }
 
 .sq-error, .sq-warning {
   text-decoration-line: underline;
@@ -288,7 +284,7 @@ button.small:hover { color: var(--ink); }
   cursor: pointer;
   border: none;
 }
-.problems li::before { display: inline-block; width: 4.6rem; font-family: var(--serif); font-variant: small-caps; font-size: 0.95rem; }
+.problems li::before { display: inline-block; width: 4.6rem; font-family: var(--sans); font-size: 12px; }
 .problems li.error { color: var(--error); }
 .problems li.error::before { content: "error"; }
 .problems li.warning { color: var(--warn); }
@@ -299,5 +295,5 @@ button.small:hover { color: var(--ink); }
 #text-view textarea { min-height: 65vh; }
 .status.has-errors { color: var(--error); }
 
-.policy { margin-left: auto; font-variant: small-caps; letter-spacing: 0.05em; color: var(--muted); }
+.policy { margin-left: auto; font-size: 13px; color: var(--muted); }
 #machine-status { min-height: 1.4em; margin-top: 0.35rem; }
