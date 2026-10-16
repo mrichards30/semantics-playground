@@ -6,6 +6,7 @@
      circ.successors(id)  -> [{rule, target, bindings: [[name, value]]}]
      circ.run(id)         -> {finals: [id], states, truncated}
      circ.rules()         -> [string]
+     circ.checkProgram(src) -> [{severity, start, stop, message}]  (against the loaded language)
      circ.check(src)      -> {diagnostics: [{severity, start, stop, message}],
                               nonterminals: [string], literals: [string]}
      circ.outline(src)    -> {ok, grammar: [string], fixity: [string],
@@ -86,6 +87,15 @@ let () =
                                   ("premises", arr (List.map str r.premises)) ])
                             o.rules) ) ])
                  (Api.outline (Js.to_string src))) );
+         ( "checkProgram",
+           fn (fun src ->
+               arr
+                 (List.map
+                    (fun (d : Api.diagnostic) ->
+                      obj
+                        [ ("severity", str d.severity); ("start", inj d.start);
+                          ("stop", inj d.stop); ("message", str d.message) ])
+                    (Api.check_program session (Js.to_string src)))) );
          ("rules", fn (fun () -> arr (List.map str (Api.rule_names session))));
          ( "run",
            fn (fun i ->

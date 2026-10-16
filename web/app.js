@@ -34,6 +34,8 @@ function ensureLoaded() {
     return false;
   }
   loadedText = text;
+  Typeset.setLanguage(circ.check(text));
+  program.refresh();
   const n = circ.rules().length;
   banner.className = "status";
   banner.textContent = `${n} rule${n === 1 ? "" : "s"}`;
@@ -58,7 +60,7 @@ function showPage(p) {
   $("machine").hidden = p !== "run";
   $("page-language").classList.toggle("on", p === "language");
   $("page-run").classList.toggle("on", p === "run");
-  if (p === "run" && ensureLoaded() && $("session").hidden && $("program").value.trim()) start();
+  if (p === "run" && ensureLoaded() && $("session").hidden && program.text.trim()) start();
 }
 
 function showProblems({ errors, warnings }) {
@@ -123,7 +125,7 @@ function setMode(m) {
 
 function start() {
   if (!ensureLoaded()) return;
-  const r = circ.config($("program").value.trim());
+  const r = circ.config(program.text.trim());
   const status = $("program-status");
   if (!r.ok) {
     status.className = "status error";
@@ -165,14 +167,19 @@ function el(tag, cls, ...kids) {
 }
 const li = (cls, ...kids) => el("li", cls, ...kids);
 const text = (s) => document.createTextNode(s);
-const term = (s) => el("span", "term", s);
+// Configurations are shown typeset, the same way the program editor draws them.
+function term(s) {
+  const t = el("span", "term");
+  t.innerHTML = Typeset.html(s);
+  return t;
+}
 const rule = (s) => el("span", "rule", s);
 
 function render() {
   const id = here();
   const succs = circ.successors(id);
 
-  $("current").textContent = circ.show(id);
+  $("current").innerHTML = Typeset.html(circ.show(id));
   $("step-count").textContent = state.cursor === 0 ? "start" : `step ${state.cursor}`;
 
   const next = $("next");
@@ -212,11 +219,28 @@ function showExample(i) {
   const ex = EXAMPLES[i];
   if (mode === "text") setMode("rules");
   Editor.load(ex.language);
-  $("program").value = ex.program;
+  program.text = ex.program;
   loadedText = null;
   $("session").hidden = true;
   if (page === "run") showPage("run");
 }
+
+// The program editor checks against the loaded language as you type.
+const program = ProgramEditor({
+  parent: $("program"),
+  onRun: () => start(),
+  check(text) {
+    if (!loadedText) return [];
+    const idx = Editor.byteToIndex(text);
+    const ds = circ.checkProgram(text).map((d) => {
+      const from = Math.min(idx(d.start), text.length);
+      return { from, to: Math.max(Math.min(idx(d.stop), text.length), from), severity: d.severity, message: d.message };
+    });
+    $("program-status").textContent = ds.length ? ds[0].message : "";
+    $("program-status").className = "status" + (ds.some((d) => d.severity === "error") ? " has-errors" : "");
+    return ds;
+  },
+});
 
 function init() {
   const select = $("example");
@@ -227,9 +251,6 @@ function init() {
   $("page-run").onclick = () => showPage("run");
   $("start").onclick = start;
   $("reset").onclick = reset;
-  $("program").onkeydown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); start(); }
-  };
   $("source").onkeydown = (e) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); showPage("run"); }
   };

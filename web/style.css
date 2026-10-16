@@ -353,3 +353,54 @@ button.small:hover { color: var(--ink); }
 .sep:last-child { height: 2rem; margin-top: 0.25rem; }
 .sep:last-child button { display: inline-block; position: relative; }
 .sep:last-child::before { border-top-color: var(--rule); }
+
+/* --- typeset programs and configurations -------------------------------- */
+
+:root {
+  --math: KaTeX_Main, "Latin Modern Roman", "Times New Roman", serif;
+  --mathit: KaTeX_Math, KaTeX_Main, "Times New Roman", serif;
+  --sel: #e7e1d3;
+}
+@media (prefers-color-scheme: dark) { :root { --sel: #34312b; } }
+
+.ts-kw, .ts-atom { font-family: var(--math); font-weight: 700; }
+.ts-id { font-family: var(--mathit); font-style: italic; }
+.ts-num, .ts-op, .ts-punct { font-family: var(--math); }
+.ts-glyph { padding: 0 0.06em; }
+.ts-op.ts-glyph { padding: 0 0.16em; }
+
+.term, .current { font-family: var(--math); font-variant-ligatures: none; }
+.current { font-size: 19px; }
+.choices .term, .trace .term, .finals .term { font-size: 16px; }
+
+.program-editor {
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 0.45rem 0.6rem;
+  min-height: 2.6rem;
+}
+.program-editor:focus-within { border-color: var(--muted); }
+.program-editor .cm-editor { font-family: var(--math); font-size: 19px; background: transparent; color: var(--ink); }
+.program-editor .cm-editor.cm-focused { outline: none; }
+.program-editor .cm-content { padding: 0; caret-color: var(--accent); }
+.program-editor .cm-line { padding: 0; }
+.program-editor .cm-cursor { border-left-color: var(--accent); }
+.program-editor .cm-placeholder { color: var(--muted); }
+.program-editor .cm-selectionBackground,
+.program-editor .cm-editor.cm-focused .cm-selectionBackground { background: var(--sel) !important; }
+.program-editor .cm-lintRange-error, .program-editor .cm-lintRange-warning {
+  background-image: none;
+  text-decoration: underline wavy;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 4px;
+}
+.program-editor .cm-lintRange-error { text-decoration-color: var(--error); }
+.program-editor .cm-lintRange-warning { text-decoration-color: var(--warn); }
+.program-editor .cm-tooltip { font-family: var(--sans); font-size: 13px; background: var(--paper); color: var(--ink); border: 1px solid var(--rule); }
+.program-editor .cm-diagnostic-error { border-left-color: var(--error); }
+.program-editor .cm-diagnostic-warning { border-left-color: var(--warn); }
+.program-editor .cm-tooltip-autocomplete ul li[aria-selected] { background: var(--sel); color: var(--ink); }
+.program-editor .cm-completionLabel { font-family: var(--math); font-size: 15px; }
+/* CodeMirror's base theme sets a monospace font on the scroller, which the
+   spaces between tokens would otherwise inherit */
+.program-editor .cm-scroller { font-family: var(--math); line-height: 1.5; }

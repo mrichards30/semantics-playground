@@ -108,3 +108,28 @@ let outline src =
   match Toplevel.outline src with
   | Ok o -> Ok o
   | Error (tk, message) -> Error { line = tk.line; col = tk.col; message }
+
+(* Problems in a program (a configuration), against the loaded language:
+   syntax errors with their range, and subterms no production matches. *)
+let check_program s src =
+  let g = s.lang.grammar in
+  let in_grammar t = List.exists (fun (nt, _) -> Grammar.mem g nt t) g.nts in
+  (* The smallest construct that isn't in the grammar, if any. *)
+  let rec stray (t : Term.t) =
+    match t with
+    | Tuple ts -> List.find_map stray ts
+    | Node ts when not (in_grammar t) -> (
+        match List.find_map stray ts with Some u -> Some u | None -> Some t)
+    | _ -> None
+  in
+  match Toplevel.parse_config s.lang src with
+  | t -> (
+      match stray t with
+      | None -> []
+      | Some u ->
+          [ { severity = "warning"; start = 0; stop = String.length src;
+              message =
+                Printf.sprintf "%s doesn't match any production of the grammar"
+                  (Grammar.to_string g u) } ])
+  | exception Lexer.Error (tk, message) ->
+      [ { severity = "error"; start = tk.start; stop = max tk.stop (tk.start + 1); message } ]
