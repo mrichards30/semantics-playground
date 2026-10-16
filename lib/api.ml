@@ -28,7 +28,7 @@ let term s i = Hashtbl.find s.terms i
 let show s i = Grammar.to_string s.lang.grammar (term s i)
 
 let catch f =
-  try Ok (f ()) with Lexer.Error (line, col, message) -> Error { line; col; message }
+  try Ok (f ()) with Lexer.Error (tk, message) -> Error { line = tk.line; col = tk.col; message }
 
 (* Replace the language with a new definition (grammar, fixity, rules).
    Any commands in the source run too; their output is returned. *)
@@ -61,3 +61,50 @@ let run s i =
   { finals = List.map (id s) r.finals; states = r.states; truncated = r.truncated }
 
 let rule_names s = List.map (fun (r : Rules.rule) -> r.name) s.lang.rules
+
+(* Editor support. *)
+
+type diagnostic = { severity : string; start : int; stop : int; message : string }
+
+type checked = {
+  diagnostics : diagnostic list;
+  nonterminals : string list;
+  literals : string list;   (* symbols the grammar uses: if, skip, :=, ... *)
+  keywords : string list;   (* literal words inside productions: if, then, while *)
+  operator_nts : string list;   (* nonterminals that stand for an operator: op *)
+}
+
+let check src =
+  let ds, lang = Toplevel.check src in
+  {
+    diagnostics =
+      List.map
+        (fun (d : Toplevel.diag) ->
+          { severity = (match d.severity with Err -> "error" | Warning -> "warning");
+            start = d.start; stop = d.stop; message = d.message })
+        ds;
+    nonterminals = List.map fst lang.grammar.nts;
+    literals = List.sort_uniq compare (Grammar.literals lang.grammar);
+    keywords =
+      List.sort_uniq compare
+        (List.concat_map
+           (fun (_, ps) ->
+             List.concat_map
+               (function
+                 | Grammar.PSeq items ->
+                     List.filter_map
+                       (function
+                         | Grammar.Lit l when Lexer.is_ident_start l.[0] -> Some l
+                         | _ -> None)
+                       items
+                 | _ -> [])
+               ps)
+           lang.grammar.nts);
+    operator_nts =
+      List.filter (fun x -> Grammar.op_lits lang.grammar x <> None) (List.map fst lang.grammar.nts);
+  }
+
+let outline src =
+  match Toplevel.outline src with
+  | Ok o -> Ok o
+  | Error (tk, message) -> Error { line = tk.line; col = tk.col; message }

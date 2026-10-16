@@ -1,2 +1,6 @@
 (cram
  (deps %{bin:circ}))
+
+(cram
+ (applies_to check)
+ (deps l1.t/l1.sem par.t/par.sem ctx.t/ctx.sem))

@@ -5,7 +5,14 @@
      circ.show(id)        -> string
      circ.successors(id)  -> [{rule, target, bindings: [[name, value]]}]
      circ.run(id)         -> {finals: [id], states, truncated}
-     circ.rules()         -> [string] *)
+     circ.rules()         -> [string]
+     circ.check(src)      -> {diagnostics: [{severity, start, stop, message}],
+                              nonterminals: [string], literals: [string]}
+     circ.outline(src)    -> {ok, grammar: [string], fixity: [string],
+                              rules: [{name, conclusion, premises: [string]}]} | error
+
+   Source offsets are UTF-8 byte offsets; the UI converts them to string
+   indices. *)
 
 open Js_of_ocaml
 module Api = Circ.Api
@@ -48,6 +55,37 @@ let () =
                              ( "bindings",
                                arr (List.map (fun (x, v) -> arr [ str x; str v ]) s.bindings) ) ])
                        (Api.successors session i)))) );
+         ( "check",
+           fn (fun src ->
+               let c = Api.check (Js.to_string src) in
+               obj
+                 [ ( "diagnostics",
+                     arr
+                       (List.map
+                          (fun (d : Api.diagnostic) ->
+                            obj
+                              [ ("severity", str d.severity); ("start", inj d.start);
+                                ("stop", inj d.stop); ("message", str d.message) ])
+                          c.diagnostics) );
+                   ("nonterminals", arr (List.map str c.nonterminals));
+                   ("literals", arr (List.map str c.literals));
+                   ("keywords", arr (List.map str c.keywords));
+                   ("operatorNonterminals", arr (List.map str c.operator_nts)) ]) );
+         ( "outline",
+           fn (fun src ->
+               result
+                 (fun (o : Circ.Toplevel.outline) ->
+                   [ ("grammar", arr (List.map str o.grammar));
+                     ("fixity", arr (List.map str o.fixity));
+                     ( "rules",
+                       arr
+                         (List.map
+                            (fun (r : Circ.Toplevel.rule_parts) ->
+                              obj
+                                [ ("name", str r.name); ("conclusion", str r.conclusion);
+                                  ("premises", arr (List.map str r.premises)) ])
+                            o.rules) ) ])
+                 (Api.outline (Js.to_string src))) );
          ("rules", fn (fun () -> arr (List.map str (Api.rule_names session))));
          ( "run",
            fn (fun i ->

@@ -7,7 +7,7 @@ Rules are checked when they are loaded.
   > rule bad (e1 + e2) -> e3
   > X
   $ circ unbound.sem
-  unbound.sem:4:6: rule bad: 'e3' in the conclusion is never bound
+  unbound.sem:4:23: 'e3' in the conclusion is never bound
   [1]
 
   $ cat > notnt.sem <<'X'

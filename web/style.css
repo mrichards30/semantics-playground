@@ -172,3 +172,120 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
 
 .term { white-space: pre-wrap; word-break: break-word; }
 .branch { color: var(--muted); font-style: italic; font-size: 0.9rem; margin-left: 0.4rem; }
+
+/* --- language editor ------------------------------------------------- */
+
+:root { --warn: #8a6d1a; }
+@media (prefers-color-scheme: dark) { :root { --warn: #d8b45a; } }
+
+.tabs { margin-left: 0.75rem; }
+.tab {
+  border: none;
+  padding: 0 0.35rem;
+  color: var(--muted);
+  font-size: 1rem;
+}
+.tab.on { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
+
+#cards { display: flex; flex-direction: column; gap: 0.6rem; }
+#cards[hidden], #text-view[hidden] { display: none; }
+
+.card {
+  border-top: 1px solid var(--rule);
+  padding: 0.5rem 0.25rem 0.4rem;
+  cursor: pointer;
+}
+.card:hover:not(.editing) { background: var(--hover); }
+.card.editing {
+  cursor: default;
+  border: 1px solid var(--rule);
+  border-left: 2px solid var(--ink);
+  padding: 0.6rem 0.75rem;
+  background: var(--paper);
+}
+
+.card .math { overflow-x: auto; overflow-y: hidden; }
+.card .math .katex-display { margin: 0.35rem 0; text-align: left; }
+.card .math .katex-display > .katex { text-align: left; }
+.katex { font-size: 1.08em; }
+
+.fixity-view { font-family: var(--mono); font-size: 12.5px; color: var(--muted); padding-left: 0.25rem; }
+
+.row { display: flex; align-items: flex-start; gap: 0.4rem; margin: 0.25rem 0; }
+.row .slot { flex: 1; }
+.row.add { margin-top: 0.15rem; }
+.row .label {
+  font-variant: small-caps; letter-spacing: 0.05em; color: var(--muted);
+  padding-top: 0.2rem; min-width: 3.5rem;
+}
+.head { justify-content: space-between; }
+.head .slot.name { flex: 0 1 12rem; }
+
+.bar-line { border-top: 1px solid var(--ink); margin: 0.45rem 0 0.35rem; }
+
+button.small { font-size: 0.9rem; padding: 0 0.45rem 0.1rem; color: var(--muted); }
+button.small:hover { color: var(--ink); }
+
+/* A slot is a textarea over a mirror of its text. The mirror draws the
+   squiggles; both must lay out text identically. */
+.slot { position: relative; }
+.slot textarea, .slot .mirror {
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.5;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  font-variant-ligatures: none;
+  letter-spacing: normal;
+}
+.slot textarea {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 0;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  z-index: 1;
+}
+.slot .mirror {
+  position: absolute;
+  inset: 0;
+  color: transparent;
+  border-color: transparent;
+  pointer-events: none;
+}
+.slot.name textarea { font-family: var(--serif); font-size: 1rem; font-variant: small-caps; }
+.slot.name .mirror { font-family: var(--serif); font-size: 1rem; font-variant: small-caps; }
+
+.sq-error, .sq-warning {
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+}
+.sq-error { text-decoration-color: var(--error); }
+.sq-warning { text-decoration-color: var(--warn); }
+
+.problems { margin: 0.3rem 0 0; }
+.problems li {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  padding: 0.1rem 0;
+  cursor: pointer;
+  border: none;
+}
+.problems li::before { display: inline-block; width: 4.6rem; font-family: var(--serif); font-variant: small-caps; font-size: 0.95rem; }
+.problems li.error { color: var(--error); }
+.problems li.error::before { content: "error"; }
+.problems li.warning { color: var(--warn); }
+.problems li.warning::before { content: "warning"; }
+
+.add-rule { padding-top: 0.25rem; border-top: 1px solid var(--rule); }
+
+#text-view textarea { min-height: 65vh; }
+.status.has-errors { color: var(--error); }

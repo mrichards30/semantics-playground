@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -21,11 +22,21 @@
 
 <main>
   <section id="language">
-    <h2>Language</h2>
-    <textarea id="source" spellcheck="false" autocomplete="off"></textarea>
+    <h2>Language
+      <span class="tabs">
+        <button id="tab-rules" class="tab on" type="button">rules</button>
+        <button id="tab-text" class="tab" type="button">text</button>
+      </span>
+    </h2>
+    <div id="cards"></div>
+    <div id="text-view" hidden>
+      <textarea id="source" spellcheck="false" autocomplete="off"></textarea>
+      <ul id="text-problems" class="problems"></ul>
+    </div>
     <div class="bar">
       <button id="load">load</button>
       <span id="load-status" class="status"></span>
+      <span id="problems" class="status"></span>
     </div>
   </section>
 
@@ -63,7 +74,10 @@
   </section>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <script src="circ_js.bc.js"></script>
+<script src="render.js"></script>
+<script src="editor.js"></script>
 <script src="examples.js"></script>
 <script src="app.js"></script>
 </body>

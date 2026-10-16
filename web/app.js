@@ -10,9 +10,13 @@ const state = {
 
 // --- language ---------------------------------------------------------
 
+let mode = "rules";   // or "text"
+
+const languageText = () => (mode === "rules" ? Editor.text() : $("source").value);
+
 function loadLanguage() {
   stop();
-  const r = circ.load($("source").value);
+  const r = circ.load(languageText());
   const status = $("load-status");
   if (!r.ok) {
     status.className = "status error";
@@ -22,10 +26,68 @@ function loadLanguage() {
   }
   const n = circ.rules().length;
   status.className = "status";
-  status.textContent = `${n} rule${n === 1 ? "" : "s"}`;
+  status.textContent = `loaded, ${n} rule${n === 1 ? "" : "s"}`;
   $("start").disabled = false;
   $("session").hidden = true;
   return true;
+}
+
+function showProblems({ errors, warnings }) {
+  const p = $("problems");
+  const parts = [];
+  if (errors) parts.push(`${errors} error${errors === 1 ? "" : "s"}`);
+  if (warnings) parts.push(`${warnings} warning${warnings === 1 ? "" : "s"}`);
+  p.textContent = parts.length ? parts.join(", ") : "no problems";
+  p.className = "status" + (errors ? " has-errors" : "");
+}
+
+Editor.onChange = () => {
+  showProblems(Editor.summary());
+  $("load-status").textContent = "";
+};
+
+// The text view is checked too, with problems listed by line.
+let textTimer = null;
+function checkText() {
+  const src = $("source").value;
+  const r = circ.check(src);
+  const idx = Editor.byteToIndex(src);
+  const list = $("text-problems");
+  list.replaceChildren();
+  for (const d of r.diagnostics) {
+    const at = idx(d.start);
+    const before = src.slice(0, at);
+    const line = before.split("\n").length, col = at - before.lastIndexOf("\n");
+    const item = document.createElement("li");
+    item.className = d.severity;
+    item.textContent = `${line}:${col}  ${d.message}`;
+    item.onclick = () => { $("source").focus(); $("source").setSelectionRange(at, Math.max(idx(d.stop), at)); };
+    list.append(item);
+  }
+  showProblems({
+    errors: r.diagnostics.filter((d) => d.severity === "error").length,
+    warnings: r.diagnostics.filter((d) => d.severity === "warning").length,
+  });
+}
+
+function setMode(m) {
+  if (m === mode) return;
+  if (m === "text") {
+    $("source").value = Editor.text();
+    checkText();
+  } else {
+    const r = Editor.load($("source").value);
+    if (!r.ok) {
+      $("load-status").className = "status error";
+      $("load-status").textContent = `fix line ${r.line}, col ${r.col} first: ${r.message}`;
+      return;
+    }
+  }
+  mode = m;
+  $("cards").hidden = m !== "rules";
+  $("text-view").hidden = m !== "text";
+  $("tab-rules").classList.toggle("on", m === "rules");
+  $("tab-text").classList.toggle("on", m === "text");
 }
 
 // --- program ----------------------------------------------------------
@@ -161,7 +223,8 @@ function render() {
 
 function showExample(i) {
   const ex = EXAMPLES[i];
-  $("source").value = ex.language;
+  if (mode === "text") setMode("rules");
+  Editor.load(ex.language);
   $("program").value = ex.program;
   if (loadLanguage()) start();
 }
@@ -184,6 +247,12 @@ function init() {
   $("source").onkeydown = (e) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); loadLanguage(); }
   };
+  $("source").oninput = () => { clearTimeout(textTimer); textTimer = setTimeout(checkText, 200); };
+  $("tab-rules").onclick = () => setMode("rules");
+  $("tab-text").onclick = () => setMode("text");
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && mode === "rules") { e.preventDefault(); loadLanguage(); }
+  });
 
   select.value = 1;
   showExample(1);

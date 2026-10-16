@@ -14,7 +14,9 @@ type tok =
 
 type token = { tok : tok; line : int; col : int; start : int; stop : int }
 
-exception Error of int * int * string
+(* Every error points at the token (and so the source range) it is about. *)
+exception Error of token * string
+
 
 let tok_to_string = function
   | INT n -> string_of_int n
@@ -121,7 +123,10 @@ let lex_one s =
         | ',' -> COMMA
         | '`' -> BACKTICK
         | _ ->
-            raise (Error (s.line, start - s.line_start + 1, Printf.sprintf "unexpected character '%c'" c))
+            raise
+              (Error
+                 ( { tok = EOF; line = s.line; col = start - s.line_start + 1; start; stop = start + 1 },
+                   Printf.sprintf "unexpected character '%c'" c ))
       in
       mk tok)
 
@@ -159,7 +164,7 @@ let add_ops s ops =
 let peek s = fill s s.pos
 let peek2 s = fill s (s.pos + 1)
 let advance s = if (peek s).tok <> EOF then s.pos <- s.pos + 1
-let error_at (tk : token) msg = raise (Error (tk.line, tk.col, msg))
+let error_at (tk : token) msg = raise (Error (tk, msg))
 
 let expect s tok =
   let tk = peek s in
