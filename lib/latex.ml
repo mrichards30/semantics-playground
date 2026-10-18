@@ -218,7 +218,8 @@ and node g req tail ts =
       in
       match (nud, led) with
       | Some (k, sk, rest), _ ->
-          let p = G.nud_prec g k in
+          let closed = match List.rev sk with Some _ :: _ -> true | _ -> false in
+          let p = if closed then 1000 else G.nud_prec g k in
           let wrap = (not tail) && p < req in
           let s = literal g k ^ " " ^ items sk rest p (tail || wrap) in
           if wrap then "(" ^ s ^ ")" else s
@@ -246,9 +247,10 @@ let rec diff g cls (a : Term.t) (b : Term.t) : v =
       List.length xs = List.length ys
       && List.for_all2
            (fun x y ->
-             match (x, y) with
-             | Sym l, Sym m when List.mem l lits || List.mem m lits -> l = m
-             | _ -> true)
+             (* a literal on either side must be the same literal on both:
+                do … od and c ; do … od are different productions *)
+             let lit = function Sym l when List.mem l lits -> Some l | _ -> None in
+             match (lit x, lit y) with None, None -> true | a, b -> a = b)
            xs ys
     in
     match (a, b) with

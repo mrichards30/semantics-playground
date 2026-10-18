@@ -14,7 +14,7 @@
  (deps
   gen_examples.js
   (:sems ../test/calc.t/calc.sem ../test/l1.t/l1.sem ../test/par.t/par.sem
-   ../test/bigstep.t/bigstep.sem ../test/ccs.t/ccs.sem))
+   ../test/bigstep.t/bigstep.sem ../test/ccs.t/ccs.sem ../test/gcl.t/gcl.sem))
  (action
   (with-stdout-to examples.js (run node gen_examples.js %{sems}))))
 

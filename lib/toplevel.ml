@@ -430,12 +430,21 @@ let parse_fixity lang s : span =
     let any = ref false in
     let rec ops () =
       let tk = peek s in
+      let declare o =
+        if g.G.nts <> [] && not (List.mem o (G.literals g)) then
+          warn tk "'%s' is not a symbol of the grammar" o;
+        Hashtbl.replace g.G.fixity o (a, p);
+        any := true
+      in
       match tk.tok with
-      | (OP o | IDENT o) when assoc_of tk.tok = None && not (is_command tk) ->
-          if g.G.nts <> [] && not (List.mem o (G.literals g)) then
-            warn tk "'%s' is not a symbol of the grammar" o;
-          Hashtbl.replace g.G.fixity o (a, p);
-          any := true;
+      | (OP o | IDENT o | STRING o) when assoc_of tk.tok = None && not (is_command tk) ->
+          declare o;
+          advance s;
+          ops ()
+      | LBRACK when (peek2 s).tok = RBRACK ->
+          (* [] as an operator, e.g. GCL's choice *)
+          declare "[]";
+          advance s;
           advance s;
           ops ()
       | _ -> ()
@@ -776,7 +785,7 @@ let declaring s f =
 (* The grammar's operators become symbols for the rest of the file. *)
 let learn_operators lang s =
   let g = lang.R.grammar in
-  let is_op o = o <> "" && String.for_all is_op_char o in
+  let is_op o = o = "[]" || (o <> "" && String.for_all is_op_char o) in
   let rel_syms =
     List.concat_map (fun r -> List.filter_map (function R.NSym x -> Some x | R.NArg -> None) r.R.notation)
       lang.R.relations

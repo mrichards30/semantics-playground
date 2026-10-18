@@ -73,9 +73,10 @@ let literals g =
         ps)
     g.nts
 
-(* `name`: any symbol the grammar doesn't use as a literal or nonterminal. *)
-let is_name g s =
-  (not (List.mem s (literals g))) && (not (List.mem s g.words)) && base_nt g s = None
+(* `name`: any symbol the grammar doesn't use as a literal or relation word. *)
+(* Nonterminal names are allowed: in a rule, a is a variable, but in a
+   program it can only be the symbol a (CCS uses a, b, c as channels). *)
+let is_name g s = (not (List.mem s (literals g))) && not (List.mem s g.words)
 
 (* A nonterminal whose productions are all literals, like op ::= + | >=. *)
 let op_lits g x =
@@ -213,7 +214,8 @@ and print g req tail (t : Term.t) =
       in
       match (nud, led) with
       | Some (k, sk, rest), _ ->
-          let p = nud_prec g k in
+          let closed = match List.rev sk with Some _ :: _ -> true | _ -> false in
+          let p = if closed then 1000 else nud_prec g k in
           let wrap = (not tail) && p < req in
           let body = print_items sk rest p (tail || wrap) in
           let glue = if String.length k = 1 && not (Lexer.is_ident_start k.[0]) then "" else " " in

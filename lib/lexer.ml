@@ -112,6 +112,11 @@ let lex_one s =
               (Option.value ~default:(String.make 1 c)
                  (List.find_opt (fun o -> starts_with o start) s.ops));
       mk (OP (String.sub src start (s.off - start))))
+    else if c = '[' && (not s.munch) && List.mem "[]" s.ops && starts_with "[]" start then (
+      (* a grammar declared "[]" as an operator (GCL's choice); otherwise
+         [ and ] are brackets and [] is a context hole *)
+      s.off <- start + 2;
+      mk (OP "[]"))
     else if c = '"' then (
       (* raw: no escapes, so LaTeX backslashes need no doubling *)
       match String.index_from_opt src (start + 1) '"' with

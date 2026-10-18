@@ -1,0 +1,52 @@
+-- Dijkstra's Guarded Command Language, with the rules as in the COMP3610
+-- slides: guarded commands either step to a command or fail when every
+-- guard is false; do ... od stops when its guards fail.
+
+grammar
+  v  ::= n | true | false
+  e  ::= v | l | e + e | e - e | e > e | e >= e | e < e | e <= e
+  c  ::= skip | abort | l := e | c ; c | if gc fi | do gc od
+  gc ::= e -> c shown "#1 \rightarrow #2" | gc "[]" gc shown "#1 \mathrel{\square} #2"
+  l  ::= name
+  n  ::= int
+  s  ::= store
+
+fixity  infixr 1 []   infixr 2 ->   infixr 3 ;   infix 4 :=   infix 5 > >= < <=   infixl 6 + -
+
+relation (e, s) ==> v        shown "#1 \Downarrow #2"
+relation (gc, s) => (c, s)   shown "#1 \longrightarrow #2"
+relation (gc, s) fails       shown "#1 \longrightarrow \mathbf{fail}"
+relation (c, s) --> (c, s)   shown "#1 \longrightarrow #2"
+
+-- expressions (the slides assume the standard rules)
+rule val    (v, s) ==> v
+rule var    (l, s) ==> n                if l in dom s, n = s(l)
+rule add    (e1 + e2, s) ==> n          if (e1, s) ==> n1, (e2, s) ==> n2, n = n1 + n2
+rule sub    (e1 - e2, s) ==> n          if (e1, s) ==> n1, (e2, s) ==> n2, n = n1 - n2
+rule gt     (e1 > e2, s) ==> v          if (e1, s) ==> n1, (e2, s) ==> n2, v = (n1 > n2)
+rule ge     (e1 >= e2, s) ==> v         if (e1, s) ==> n1, (e2, s) ==> n2, v = (n1 >= n2)
+rule lt     (e1 < e2, s) ==> v          if (e1, s) ==> n1, (e2, s) ==> n2, v = (n1 < n2)
+rule le     (e1 <= e2, s) ==> v         if (e1, s) ==> n1, (e2, s) ==> n2, v = (n1 <= n2)
+
+-- guarded commands
+rule pos    (e -> c, s) => (c, s)       if (e, s) ==> true
+rule neg    (e -> c, s) fails           if (e, s) ==> false
+rule par1   (gc1 [] gc2, s) => (c, s')  if (gc1, s) => (c, s')
+rule par2   (gc1 [] gc2, s) => (c, s')  if (gc2, s) => (c, s')
+rule par3   (gc1 [] gc2, s) fails       if (gc1, s) fails, (gc2, s) fails
+
+-- commands (abort has no rules)
+rule assign (l := e, s) --> (skip, s')  if (e, s) ==> n, l in dom s, s' = s[l |-> n]
+rule seq1   (skip ; c, s) --> (c, s)
+rule seq2   (c1 ; c2, s) --> (c1' ; c2, s')  if (c1, s) --> (c1', s')
+rule cond   (if gc fi, s) --> (c, s')   if (gc, s) => (c, s')
+rule loop1  (do gc od, s) --> (skip, s) if (gc, s) fails
+rule loop2  (do gc od, s) --> (c ; do gc od, s')  if (gc, s) => (c, s')
+
+-- example: GCL, assignment 4 exercise 2
+-- COMP3610 Assignment 4, Exercise 2: does this terminate?
+step (do x > y -> if x - y <= 5 -> y := y - 1 [] x <= 0 -> x := x - 1 fi od, {x |-> 0, y |-> -1})
+-- both guards of the if can hold at once: two possible steps
+step (if x - y <= 5 -> y := y - 1 [] x <= 0 -> x := x - 1 fi ; do x > y -> if x - y <= 5 -> y := y - 1 [] x <= 0 -> x := x - 1 fi od, {x |-> 0, y |-> -1})
+-- Euclid's algorithm, from the slides
+run (do x > y -> x := x - y [] y > x -> y := y - x od, {x |-> 12, y |-> 18})

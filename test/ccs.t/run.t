@@ -8,3 +8,9 @@
     res tau: (~coffee . CM | coffee . CS) \ coin \ coffee
   run (CM | CS) \ coin \ coffee
     no final configuration (every path loops)
+  step a . (~c . 0 + b . 0) | ((c . 0 + ~a . 0) | ~b . 0)
+    par1 a: (~c . 0 + b . 0) | ((c . 0 + ~a . 0) | ~b . 0)
+    par2 c: a . (~c . 0 + b . 0) | (0 | ~b . 0)
+    par2 ~a: a . (~c . 0 + b . 0) | (0 | ~b . 0)
+    par2 ~b: a . (~c . 0 + b . 0) | ((c . 0 + ~a . 0) | 0)
+    com1 tau: (~c . 0 + b . 0) | (0 | ~b . 0)

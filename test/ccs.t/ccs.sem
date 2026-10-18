@@ -6,7 +6,7 @@ grammar
   a     ::= name
   K     ::= name
   alpha ::= a | ~ a shown "\overline{#1}" | tau shown "\tau"
-  P     ::= 0 shown "\mathbf{0}" | alpha . P | P + P | P "|" P | P \ a | K
+  P     ::= 0 shown "\mathbf{0}" | alpha . P | P + P | P "|" P shown "#1 \parallel #2" | P \ a | K
 
 fixity  prefix 7 ~   infixl 6 \   infixr 5 .   infixl 4 |   infixl 3 +
 
@@ -32,3 +32,7 @@ step CM | CS
 step (CM | ~coin . coffee . CS) \ coin \ coffee
 -- three states, cycling forever
 run (CM | CS) \ coin \ coffee
+
+-- example: pure CCS, assignment 4 Q6
+-- which tau-steps P -tau-> Q -tau-> R are there? (b means b.0)
+step a . (~c . 0 + b . 0) | ((c . 0 + ~a . 0) | ~b . 0)
