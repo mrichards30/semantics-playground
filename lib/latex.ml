@@ -119,6 +119,7 @@ type v =
   | VSet of v list
   | VHole
   | VArb
+  | VMark of string * v   (* highlighted: drawn inside \htmlClass{class}{…} *)
 
 let rec of_term : Term.t -> v = function
   | Int n -> VInt n
@@ -143,6 +144,7 @@ let rec of_pat : Term.pat -> v = function
 
 let rec tex g ?(req = 0) ?(tail = true) (t : v) =
   match t with
+  | VMark (cls, v) -> "\\htmlClass{" ^ cls ^ "}{" ^ tex g ~req ~tail v ^ "}"
   | VInt n -> (
       match Hashtbl.find_opt g.G.lit_templates (string_of_int n) with
       | Some l -> "{" ^ l ^ "}"
@@ -232,6 +234,38 @@ and node g req tail ts =
       | None, None -> "(" ^ String.concat "\\ " (List.map (tex g ~req:1000 ~tail:false) ts) ^ ")")
 
 let term g t = tex g (of_term t)
+
+(* [a] with the parts that differ from [b] marked with [cls]. Nodes built by
+   the same production are compared child by child, so only the subterm that
+   changed is marked; a store marks the entries whose values changed. *)
+let rec diff g cls (a : Term.t) (b : Term.t) : v =
+  if compare a b = 0 then of_term a
+  else
+    let lits = G.literals g in
+    let same_shape xs ys =
+      List.length xs = List.length ys
+      && List.for_all2
+           (fun x y ->
+             match (x, y) with
+             | Sym l, Sym m when List.mem l lits || List.mem m lits -> l = m
+             | _ -> true)
+           xs ys
+    in
+    match (a, b) with
+    | Node xs, Node ys when same_shape xs ys -> VNode (List.map2 (diff g cls) xs ys)
+    | Tuple xs, Tuple ys when List.length xs = List.length ys -> VTuple (List.map2 (diff g cls) xs ys)
+    | Store xs, Store ys ->
+        VMap
+          (List.map
+             (fun (k, v) ->
+               match List.assoc_opt k ys with
+               | Some v' when compare v v' = 0 -> (of_term k, of_term v)
+               | Some v' -> (of_term k, diff g cls v v')
+               | None -> (VMark (cls, of_term k), VMark (cls, of_term v)))
+             xs)
+    | _ -> VMark (cls, of_term a)
+
+let term_diff g cls a b = tex g (diff g cls a b)
 let pat g p = tex g (of_pat p)
 
 (* Judgments: the relation's template, or its notation with symbols drawn. *)

@@ -159,7 +159,7 @@ function start() {
   if (!relation()) return;
   if (relation().steps) {
     say("");
-    state.path = [{ id: r.id, rule: null, labels: [] }];
+    state.path = [{ id: r.id }];
     state.cursor = 0;
     $("query").hidden = true;
     $("session").hidden = false;
@@ -173,12 +173,17 @@ function start() {
 
 const here = () => state.path[state.cursor].id;
 
-function take(succ) {
+function take(succ, of) {
   say("");
   state.path = state.path.slice(0, state.cursor + 1);
-  state.path.push({ id: succ.target, rule: succ.rule, labels: succ.labels });
+  state.path.push({ id: succ.target, step: succ, of });
   state.cursor++;
-  render();
+  render(true);
+  $("focus").focus({ preventScroll: true });   // keep the keyboard shortcuts working
+}
+
+function back() {
+  if (state.cursor > 0) { state.cursor--; render(); }
 }
 
 function say(msg) { $("machine-status").textContent = msg; }
@@ -200,10 +205,15 @@ const li = (cls, ...kids) => el("li", cls, ...kids);
 const text = (s) => document.createTextNode(s);
 const rule = (s) => el("span", "rule", s);
 
-// LaTeX from the runtime, typeset.
+// LaTeX from the runtime, typeset. \htmlClass marks the part a step
+// changed (see circ.latexDiff).
 function tex(src, cls = "term", display = false) {
   const t = el("span", cls);
-  if (window.katex) katex.render(src, t, { throwOnError: false, displayMode: display });
+  if (window.katex)
+    katex.render(src, t, {
+      throwOnError: false, displayMode: display, strict: false,
+      trust: (c) => c.command === "\\htmlClass",
+    });
   else t.textContent = src;
   return t;
 }
@@ -237,51 +247,90 @@ function derivation(d, open = 3) {
   return el("ul", "deriv root", node);
 }
 
-function render() {
-  const id = here();
-  const succs = circ.successors(rel, id);
+// The stepper: where you are in the middle, the step that got you there
+// above it, and the possible next steps fanned out below as cards. Click a
+// card and it moves to the middle; click the step above to go back.
+function render(arriving) {
+  const box = $("focus");
+  box.replaceChildren();
+  const here = state.path[state.cursor];
+  const prev = state.cursor > 0 ? state.path[state.cursor - 1] : null;
+  const succs = circ.successors(rel, here.id);
 
-  $("current").replaceChildren(tex(circ.latex(id), "term", true));
-  $("step-count").textContent = state.cursor === 0 ? "start" : `step ${state.cursor}`;
+  // breadcrumbs: every step so far; click one to go back to it
+  const crumbs = el("div", "crumbs");
+  state.path.forEach((p, i) => {
+    if (i > state.cursor) return;
+    if (i > 0) crumbs.append(el("span", "sep", "→"));
+    const b = el("button", null, i === 0 ? "start" : p.step.rule);
+    b.disabled = i === state.cursor;
+    b.onclick = () => { state.cursor = i; render(); };
+    crumbs.append(b);
+  });
+  box.append(crumbs);
 
-  const next = $("next");
-  next.replaceChildren();
-  if (succs.length === 0) next.append(li("empty", text("no rule applies")));
-  for (const s of succs) {
-    const why = el("button", "small why", "why");
-    why.title = "show the derivation of this step";
-    const item = li(null, stepLabel(s.rule, s.labels), tex(circ.latex(s.target)), why);
-    let tree = null;
-    why.onclick = (e) => {
-      e.stopPropagation();
-      if (tree) { tree.remove(); tree = null; item.classList.remove("open"); return; }
-      tree = el("div", "why-tree", derivation(s.why, 2));
-      tree.onclick = (e) => e.stopPropagation();
-      item.classList.add("open");
-      item.append(tree);
-    };
-    item.onclick = () => take(s);
-    next.append(item);
+  if (prev) {
+    const before = el("div", "prev", tex(circ.latexDiff(prev.id, here.id, "redex")));
+    before.title = "go back to this configuration";
+    before.onclick = back;
+    const arrow = el("div", "via", el("span", "arrow", "⟶"), stepLabel(here.step.rule, here.step.labels));
+    if (here.of > 1) arrow.append(el("span", "branch", `1 of ${here.of}`));
+    const why = whyButton(here.step.why);
+    arrow.append(why.button);
+    box.append(before, el("div", "stem"), arrow, why.tree, el("div", "stem"));
   }
 
-  const trace = $("trace");
-  trace.replaceChildren();
-  state.path.forEach((p, i) => {
-    const siblings = i > 0 ? circ.successors(rel, state.path[i - 1].id) : [];
-    const label = stepLabel(p.rule, p.labels);
-    if (siblings.length > 1) {
-      const k = siblings.findIndex((s) => s.target === p.id && s.rule === p.rule) + 1;
-      label.append(el("span", "branch", `${k} of ${siblings.length}`));
-    }
-    const item = li(i === state.cursor ? "here" : null, el("span", "n", String(i)), label, tex(circ.latex(p.id)));
-    item.onclick = () => { state.cursor = i; render(); };
-    trace.append(item);
-  });
-  trace.querySelector(".here")?.scrollIntoView({ block: "nearest" });
+  const centre = el("div", "centre" + (arriving ? " arriving" : ""),
+    tex(prev ? circ.latexDiff(here.id, prev.id, "changed") : circ.latex(here.id), "term", true));
+  box.append(centre);
+  if (arriving) requestAnimationFrame(() => requestAnimationFrame(() => centre.classList.remove("arriving")));
 
+  if (succs.length === 0) {
+    box.append(el("div", "end", "finished: no rule applies"));
+  } else {
+    box.append(el("div", "stem"));
+    const fan = el("div", "fan" + (succs.length > 1 ? " many" : ""));
+    succs.forEach((s, k) => {
+      const why = whyButton(s.why);
+      const top = el("div", "top", el("span", "key", succs.length > 1 ? String(k + 1) : "⏎"),
+        stepLabel(s.rule, s.labels), why.button);
+      const card = el("div", "card-step", top, tex(circ.latexDiff(s.target, here.id, "changed")), why.tree);
+      card.tabIndex = 0;
+      card.title = "take this step";
+      card.onclick = () => take(s, succs.length);
+      card.onkeydown = (e) => { if (e.key === "Enter" && e.target === card) take(s, succs.length); };
+      fan.append(card);
+    });
+    box.append(fan);
+    // the bar joining the cards runs between the first and last card's centres
+    requestAnimationFrame(() => {
+      const cards = fan.querySelectorAll(".card-step");
+      if (cards.length < 2) return;
+      const fb = fan.getBoundingClientRect(), a = cards[0].getBoundingClientRect(), z = cards[cards.length - 1].getBoundingClientRect();
+      if (Math.abs(a.top - z.top) > 4) { fan.classList.remove("many"); return; }
+      fan.style.setProperty("--l", (a.left + a.width / 2 - fb.left) + "px");
+      fan.style.setProperty("--r", (fb.right - z.left - z.width / 2) + "px");
+    });
+  }
+
+  $("step-count").textContent = state.cursor === 0 ? "start" : `step ${state.cursor}`;
   $("reset").disabled = state.cursor === 0;
-  say(succs.length === 0 ? "finished: no rule applies"
-    : succs.length > 1 ? `${succs.length} successors: choose one` : "");
+  say(succs.length > 1 ? `${succs.length} possible steps: choose one` : "");
+}
+
+// A "why" toggle and the derivation it shows.
+function whyButton(d) {
+  const button = el("button", "small why", "why");
+  button.title = "show the derivation of this step";
+  const tree = el("div", "why-tree", derivation(d, 2));
+  tree.hidden = true;
+  tree.onclick = (e) => e.stopPropagation();
+  button.onclick = (e) => {
+    e.stopPropagation();
+    tree.hidden = !tree.hidden;
+    button.textContent = tree.hidden ? "why" : "hide";
+  };
+  return { button, tree };
 }
 
 // A relation that can't be stepped is solved: every solution, with its
@@ -341,6 +390,13 @@ function init() {
   $("page-run").onclick = () => showPage("run");
   $("start").onclick = start;
   $("reset").onclick = reset;
+  $("focus").addEventListener("keydown", (e) => {
+    if (page !== "run" || $("session").hidden) return;
+    const succs = circ.successors(rel, state.path[state.cursor].id);
+    if (e.key === "Enter" && e.target === $("focus") && succs.length === 1) { e.preventDefault(); take(succs[0], 1); }
+    else if (/^[1-9]$/.test(e.key) && succs[Number(e.key) - 1]) { e.preventDefault(); take(succs[Number(e.key) - 1], succs.length); }
+    else if (e.key === "Backspace" && e.target === $("focus")) { e.preventDefault(); back(); }
+  });
   $("relation").onchange = () => {
     rel = Number($("relation").value);
     $("session").hidden = true;

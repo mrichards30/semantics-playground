@@ -27,6 +27,10 @@ let term s i = Hashtbl.find s.terms i
 let show s i = Grammar.to_string s.lang.grammar (term s i)
 let latex s i = Latex.term s.lang.grammar (term s i)
 
+(* The term [i] typeset with what differs from [j] wrapped in
+   \htmlClass{cls}{…}: the redex before a step, the result after it. *)
+let latex_diff s i j cls = Latex.term_diff s.lang.grammar cls (term s i) (term s j)
+
 let catch f =
   try Ok (f ()) with Lexer.Error (tk, message) -> Error { line = tk.line; col = tk.col; message }
 

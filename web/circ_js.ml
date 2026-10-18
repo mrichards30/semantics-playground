@@ -4,6 +4,7 @@
      circ.config(src)          -> {ok, id} | error
      circ.show(id)             -> string        (text)
      circ.latex(id)            -> string        (LaTeX)
+     circ.latexDiff(id, other, cls) -> LaTeX of id, parts differing from other in \htmlClass{cls}
      circ.relations()          -> [{index, notation, shown, steps, inputs}]
      circ.successors(rel, id)  -> [{rule, target, labels: [latex], why}]
      circ.solve(rel, id)       -> {solutions: [{outputs: [latex], outputIds, proof}], outOfFuel}
@@ -55,6 +56,8 @@ let () =
          ("config", fn (fun src -> result (fun i -> [ ("id", inj i) ]) (Api.config session (Js.to_string src))));
          ("show", fn (fun i -> Js.string (Api.show session i)));
          ("latex", fn (fun i -> Js.string (Api.latex session i)));
+         ( "latexDiff",
+           fn (fun i j cls -> Js.string (Api.latex_diff session i j (Js.to_string cls))) );
          ( "relations",
            fn (fun () ->
                arr
