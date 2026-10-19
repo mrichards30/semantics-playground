@@ -1,0 +1,2 @@
+# cram tests, not Raku or Turing
+*.t linguist-detectable=false
