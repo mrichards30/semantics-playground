@@ -1,4 +1,4 @@
-  $ circ l1.sem
+  $ semplay l1.sem
   step (1 + 2, {})
     op+: (3, {})
   step ((1 + 2) + 3, {})

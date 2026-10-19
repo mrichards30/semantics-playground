@@ -1,5 +1,5 @@
 (cram
- (deps %{bin:circ}))
+ (deps %{bin:semplay}))
 
 (cram
  (applies_to check)

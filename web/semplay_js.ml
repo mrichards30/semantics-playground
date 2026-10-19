@@ -1,29 +1,29 @@
-(* JavaScript bindings for the runtime: exports a `circ` object.
+(* JavaScript bindings for the runtime: exports a `semplay` object.
 
-     circ.load(src)            -> {ok, output: [string]} | {ok: false, line, col, message}
-     circ.config(src)          -> {ok, id} | error
-     circ.show(id)             -> string        (text)
-     circ.latex(id)            -> string        (LaTeX)
-     circ.latexDiff(id, other, cls) -> LaTeX of id, parts differing from other in \htmlClass{cls}
-     circ.relations()          -> [{index, notation, shown, steps, inputs}]
-     circ.successors(rel, id)  -> [{rule, target, labels: [latex], why}]
-     circ.solve(rel, id)       -> {solutions: [{outputs: [latex], outputIds, proof}], outOfFuel}
-     circ.run(rel, id)         -> {finals: [id], states, truncated}
-     circ.rules()              -> [string]
-     circ.check(src)           -> {diagnostics: [{severity, start, stop, message}],
+     semplay.load(src)            -> {ok, output: [string]} | {ok: false, line, col, message}
+     semplay.config(src)          -> {ok, id} | error
+     semplay.show(id)             -> string        (text)
+     semplay.latex(id)            -> string        (LaTeX)
+     semplay.latexDiff(id, other, cls) -> LaTeX of id, parts differing from other in \htmlClass{cls}
+     semplay.relations()          -> [{index, notation, shown, steps, inputs}]
+     semplay.successors(rel, id)  -> [{rule, target, labels: [latex], why}]
+     semplay.solve(rel, id)       -> {solutions: [{outputs: [latex], outputIds, proof}], outOfFuel}
+     semplay.run(rel, id)         -> {finals: [id], states, truncated}
+     semplay.rules()              -> [string]
+     semplay.check(src)           -> {diagnostics: [{severity, start, stop, message}],
                                    nonterminals, literals, keywords, operatorNonterminals,
                                    grammarTex, relationsTex: [latex],
                                    rulesTex: [{from, until, tex}]}
-     circ.outline(src)         -> {ok, grammar, fixity, relations: [string],
+     semplay.outline(src)         -> {ok, grammar, fixity, relations: [string],
                                    rules: [{name, conclusion, premises}]} | error
-     circ.checkProgram(src)    -> [{severity, start, stop, message}]
+     semplay.checkProgram(src)    -> [{severity, start, stop, message}]
 
    A derivation (why, proof) is {rule, judgment: latex, premises: [derivation]}.
    Source offsets are UTF-8 byte offsets; the UI converts them to string
    indices. *)
 
 open Js_of_ocaml
-module Api = Circ.Api
+module Api = Semplay.Api
 
 let session = Api.create ()
 let obj fields = Js.Unsafe.obj (Array.of_list fields)
@@ -49,7 +49,7 @@ let diagnostics ds =
        ds)
 
 let () =
-  Js.export "circ"
+  Js.export "semplay"
     (obj
        [ ( "load",
            fn (fun src -> result (fun lines -> [ ("output", strs lines) ]) (Api.load session (Js.to_string src))) );
@@ -114,12 +114,12 @@ let () =
          ( "outline",
            fn (fun src ->
                result
-                 (fun (o : Circ.Toplevel.outline) ->
+                 (fun (o : Semplay.Toplevel.outline) ->
                    [ ("grammar", strs o.grammar); ("fixity", strs o.fixity); ("relations", strs o.relations);
                      ( "rules",
                        arr
                          (List.map
-                            (fun (r : Circ.Toplevel.rule_parts) ->
+                            (fun (r : Semplay.Toplevel.rule_parts) ->
                               obj
                                 [ ("name", str r.name); ("conclusion", str r.conclusion);
                                   ("premises", strs r.premises) ])

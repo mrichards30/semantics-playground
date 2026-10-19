@@ -1,4 +1,4 @@
-  $ circ ccs.sem
+  $ semplay ccs.sem
   step (CM | CS) \ coin \ coffee
     res ~pub: (CM | ~coin . coffee . CS) \ coin \ coffee
   step CM | CS

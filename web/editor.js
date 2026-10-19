@@ -94,7 +94,7 @@ const Editor = (() => {
 
   function check() {
     const { text, slots, cards } = serialize();
-    const r = circ.check(text);
+    const r = semplay.check(text);
     const idx = byteToIndex(text);
     tex = { grammar: r.grammarTex, relations: r.relationsTex, rules: new Map() };
     for (const t of r.rulesTex) {
@@ -423,7 +423,7 @@ const Editor = (() => {
 
   return {
     load(text) {
-      const o = circ.outline(text);
+      const o = semplay.outline(text);
       if (!o.ok) return o;
       fromOutline(o);
       editing = null;

@@ -1,4 +1,4 @@
-  $ circ gcl.sem
+  $ semplay gcl.sem
   step (do x > y -> if x - y <= 5 -> y := y - 1 [] x <= 0 -> x := x - 1 fi od, {x |-> 0, y |-> -1})
     loop2: (if x - y <= 5 -> y := y - 1 [] x <= 0 -> x := x - 1 fi ; do x > y -> if x - y <= 5 -> y := y - 1 [] x <= 0 -> x := x - 1 fi od, {x |-> 0, y |-> -1})
   step (if x - y <= 5 -> y := y - 1 [] x <= 0 -> x := x - 1 fi ; do x > y -> if x - y <= 5 -> y := y - 1 [] x <= 0 -> x := x - 1 fi od, {x |-> 0, y |-> -1})

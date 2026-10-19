@@ -1,4 +1,4 @@
-  $ circ par.sem
+  $ semplay par.sem
   step (x := 1 || x := 2, {x |-> 0})
     par1: (skip || x := 2, {x |-> 1})
     par2: (x := 1 || skip, {x |-> 2})

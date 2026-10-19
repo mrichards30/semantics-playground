@@ -21,8 +21,8 @@ function ensureLoaded() {
   const text = languageText();
   if (text === loadedText) return true;
   const banner = $("lang-banner");
-  const errors = circ.check(text).diagnostics.filter((d) => d.severity === "error").length;
-  const r = errors ? null : circ.load(text);
+  const errors = semplay.check(text).diagnostics.filter((d) => d.severity === "error").length;
+  const r = errors ? null : semplay.load(text);
   if (!r || !r.ok) {
     banner.className = "status error-banner";
     banner.replaceChildren(
@@ -34,10 +34,10 @@ function ensureLoaded() {
     return false;
   }
   loadedText = text;
-  Typeset.setLanguage(circ.check(text));
+  Typeset.setLanguage(semplay.check(text));
   program.refresh();
   chooseRelations();
-  const n = circ.rules().length;
+  const n = semplay.rules().length;
   banner.className = "status";
   banner.textContent = `${n} rule${n === 1 ? "" : "s"}`;
   $("start").disabled = false;
@@ -48,7 +48,7 @@ function ensureLoaded() {
 
 // --- relations ----------------------------------------------------------
 
-// The relation being run, by index into circ.relations(). Relations that
+// The relation being run, by index into semplay.relations(). Relations that
 // can be stepped (one input, an output of the same sort) get the stepper;
 // any other relation is queried for all its solutions.
 let rels = [];
@@ -57,7 +57,7 @@ const relation = () => rels[rel];
 
 function chooseRelations() {
   const before = rels[rel] && rels[rel].notation;
-  rels = circ.relations();
+  rels = semplay.relations();
   const keep = rels.findIndex((r) => r.notation === before);
   const stepping = rels.findIndex((r) => r.steps);
   rel = keep >= 0 ? keep : stepping >= 0 ? stepping : 0;
@@ -104,7 +104,7 @@ Editor.onChange = () => {
 let textTimer = null;
 function checkText() {
   const src = $("source").value;
-  const r = circ.check(src);
+  const r = semplay.check(src);
   const idx = Editor.byteToIndex(src);
   const list = $("text-problems");
   list.replaceChildren();
@@ -148,7 +148,7 @@ function setMode(m) {
 
 function start() {
   if (!ensureLoaded()) return;
-  const r = circ.config(program.text.trim());
+  const r = semplay.config(program.text.trim());
   const status = $("program-status");
   if (!r.ok) {
     status.className = "status error";
@@ -206,7 +206,7 @@ const text = (s) => document.createTextNode(s);
 const rule = (s) => el("span", "rule", s);
 
 // LaTeX from the runtime, typeset. \htmlClass marks the part a step
-// changed (see circ.latexDiff).
+// changed (see semplay.latexDiff).
 function tex(src, cls = "term", display = false) {
   const t = el("span", cls);
   if (window.katex)
@@ -255,7 +255,7 @@ function render(arriving) {
   box.replaceChildren();
   const here = state.path[state.cursor];
   const prev = state.cursor > 0 ? state.path[state.cursor - 1] : null;
-  const succs = circ.successors(rel, here.id);
+  const succs = semplay.successors(rel, here.id);
 
   // breadcrumbs: every step so far; click one to go back to it
   const crumbs = el("div", "crumbs");
@@ -270,7 +270,7 @@ function render(arriving) {
   box.append(crumbs);
 
   if (prev) {
-    const before = el("div", "prev", tex(circ.latexDiff(prev.id, here.id, "redex")));
+    const before = el("div", "prev", tex(semplay.latexDiff(prev.id, here.id, "redex")));
     before.title = "go back to this configuration";
     before.onclick = back;
     const arrow = el("div", "via", el("span", "arrow", "⟶"), stepLabel(here.step.rule, here.step.labels));
@@ -281,7 +281,7 @@ function render(arriving) {
   }
 
   const centre = el("div", "centre" + (arriving ? " arriving" : ""),
-    tex(prev ? circ.latexDiff(here.id, prev.id, "changed") : circ.latex(here.id), "term", true));
+    tex(prev ? semplay.latexDiff(here.id, prev.id, "changed") : semplay.latex(here.id), "term", true));
   box.append(centre);
   if (arriving) requestAnimationFrame(() => requestAnimationFrame(() => centre.classList.remove("arriving")));
 
@@ -294,7 +294,7 @@ function render(arriving) {
       const why = whyButton(s.why);
       const top = el("div", "top", el("span", "key", succs.length > 1 ? String(k + 1) : "⏎"),
         stepLabel(s.rule, s.labels), why.button);
-      const card = el("div", "card-step", top, tex(circ.latexDiff(s.target, here.id, "changed")), why.tree);
+      const card = el("div", "card-step", top, tex(semplay.latexDiff(s.target, here.id, "changed")), why.tree);
       card.tabIndex = 0;
       card.title = "take this step";
       card.onclick = () => take(s, succs.length);
@@ -336,7 +336,7 @@ function whyButton(d) {
 // A relation that can't be stepped is solved: every solution, with its
 // derivation.
 function solve(id) {
-  const r = circ.solve(rel, id);
+  const r = semplay.solve(rel, id);
   const n = r.solutions.length;
   $("query-meta").textContent =
     (n === 0 ? "none" : `${n}`) + (r.outOfFuel ? ", search ran out of fuel" : "");
@@ -371,7 +371,7 @@ const program = ProgramEditor({
   check(text) {
     if (!loadedText) return [];
     const idx = Editor.byteToIndex(text);
-    const ds = circ.checkProgram(text).map((d) => {
+    const ds = semplay.checkProgram(text).map((d) => {
       const from = Math.min(idx(d.start), text.length);
       return { from, to: Math.max(Math.min(idx(d.stop), text.length), from), severity: d.severity, message: d.message };
     });
@@ -392,7 +392,7 @@ function init() {
   $("reset").onclick = reset;
   $("focus").addEventListener("keydown", (e) => {
     if (page !== "run" || $("session").hidden) return;
-    const succs = circ.successors(rel, state.path[state.cursor].id);
+    const succs = semplay.successors(rel, state.path[state.cursor].id);
     if (e.key === "Enter" && e.target === $("focus") && succs.length === 1) { e.preventDefault(); take(succs[0], 1); }
     else if (/^[1-9]$/.test(e.key) && succs[Number(e.key) - 1]) { e.preventDefault(); take(succs[Number(e.key) - 1], succs.length); }
     else if (e.key === "Backspace" && e.target === $("focus")) { e.preventDefault(); back(); }

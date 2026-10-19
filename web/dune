@@ -1,12 +1,12 @@
 (executable
- (name circ_js)
+ (name semplay_js)
  (modes js)
- (libraries circ js_of_ocaml))
+ (libraries semplay js_of_ocaml))
 
 (rule
  (alias runtest)
  (action
-  (run node %{dep:smoke.js} %{dep:circ_js.bc.js} %{dep:../test/par.t/par.sem}
+  (run node %{dep:smoke.js} %{dep:semplay_js.bc.js} %{dep:../test/par.t/par.sem}
    %{dep:../test/bigstep.t/bigstep.sem} %{dep:../test/ccs.t/ccs.sem})))
 
 (rule
@@ -21,5 +21,5 @@
 ; `dune build @site` puts a ready-to-open page in _build/default/web/
 (alias
  (name site)
- (deps index.html style.css editor.js typeset.js app.js examples.js circ_js.bc.js
+ (deps index.html style.css editor.js typeset.js app.js examples.js semplay_js.bc.js
   vendor/codemirror.js))

@@ -1,4 +1,4 @@
-  $ circ meta.sem
+  $ semplay meta.sem
   show 1 + 2 * 3
     7
   show 7 / 2

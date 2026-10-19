@@ -1,4 +1,4 @@
-  $ circ bigstep.sem
+  $ semplay bigstep.sem
   query (x := !x + 1 ; !x, {x |-> 41}) ==> ?
     (42, {x |-> 42})
       by seq: (x := !x + 1 ; !x, {x |-> 41}) ==> (42, {x |-> 42})

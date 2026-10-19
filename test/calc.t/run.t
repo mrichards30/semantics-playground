@@ -1,4 +1,4 @@
-  $ circ calc.sem
+  $ semplay calc.sem
   trace (1 + 2) * (10 - 4)
        (1 + 2) * (10 - 4)
     -> left: 3 * (10 - 4)

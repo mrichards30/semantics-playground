@@ -1,4 +1,4 @@
-  $ circ ops.sem
+  $ semplay ops.sem
   trace 1<+>2|>~~3<+>4
        1 <+> 2 |> ~~ 3 <+> 4
     -> pl: 3 |> ~~ 3 <+> 4

@@ -1,4 +1,4 @@
 (executable
  (name main)
- (public_name circ)
- (libraries circ))
+ (public_name semplay)
+ (libraries semplay))

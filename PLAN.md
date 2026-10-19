@@ -1,4 +1,4 @@
-# circular-imp — plan
+# semantics playground — plan
 
 A player for inductive relations. Users write a grammar and textbook-style
 inference rules; the runtime registers them and lets users explore what the
@@ -171,7 +171,7 @@ Done:
 5. Typesetting in OCaml (`lib/latex.ml`) from the grammar's own structure and
    templates: rule cards, grammar, relations, configurations, derivations.
 6. Checker: errors and warnings with ranges; mode checking; typo warnings
-   with suggestions; `circ --check`, `circ --latex`.
+   with suggestions; `semplay --check`, `semplay --latex`.
 7. Web UI: language page (rule cards, relations, live diagnostics, text tab)
    and run page (relation picker; stepper with labels and "why" derivations;
    query view with derivation trees). Typeset-as-you-type program editor.

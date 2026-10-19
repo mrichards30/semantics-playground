@@ -1,4 +1,4 @@
-  $ circ ctx.sem
+  $ semplay ctx.sem
   step ((1 + 2) + (3 + 4), {})
     plus: (3 + (3 + 4), {})
   step (x := 1 + 2 ; y := 3, {x |-> 0, y |-> 0})

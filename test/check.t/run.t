@@ -1,9 +1,9 @@
 The checker reports every problem, with positions, and keeps going after
 errors. Good files are clean:
 
-  $ circ --check ../l1.t/l1.sem
-  $ circ --check ../par.t/par.sem
-  $ circ --check ../ctx.t/ctx.sem
+  $ semplay --check ../l1.t/l1.sem
+  $ semplay --check ../par.t/par.sem
+  $ semplay --check ../ctx.t/ctx.sem
 
 Several mistakes in one file:
 
@@ -23,7 +23,7 @@ Several mistakes in one file:
   > rule plus (n1 + n2, s) -> (n1, s)
   > rule bind (n1 + n2, s) -> (n1, s) if b = 1
   > X
-  $ circ --check bad.sem
+  $ semplay --check bad.sem
   bad.sem:3:22: warning: two subterms in a row can't be parsed; put a symbol between them
   bad.sem:3:49: warning: another production already starts with 'if'; only that one is used for parsing
   bad.sem:6:28: warning: '++' is not a symbol of the grammar
@@ -46,7 +46,7 @@ Stray text after a conclusion or between premises:
   > rule a (n1 + n2) -> n junk if n = n1 + n2
   > rule b (n1 + n2) -> n if n = n1 + n2 n = 3
   > X
-  $ circ --check trailing.sem
+  $ semplay --check trailing.sem
   trailing.sem:5:23: error: unexpected 'junk' after the judgment; premises start with 'if' and are separated by commas
   trailing.sem:6:38: error: unexpected 'n'; premises are separated by commas
   [1]
@@ -63,7 +63,7 @@ Mode checking: a premise's inputs must already be bound.
   > rule plus (e1 + e2, s) ==> (n, s'') if (e2, s') ==> (n2, s''), (e1, s) ==> (n1, s'), n = n1 + n2
   > rule bad (e1 + e2, s) ==> (n, s) if (e1, s) -> (n, s)
   > X
-  $ circ --check modes.sem
+  $ semplay --check modes.sem
   modes.sem:7:45: error: 's'' is used before it is bound
   modes.sem:8:45: error: '->' isn't the symbol of any declared relation
   [1]
