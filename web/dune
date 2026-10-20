@@ -21,5 +21,5 @@
 ; `dune build @site` puts a ready-to-open page in _build/default/web/
 (alias
  (name site)
- (deps index.html style.css editor.js typeset.js app.js examples.js semplay_js.bc.js
+ (deps index.html style.css editor.js typeset.js app.js tutorial.js examples.js semplay_js.bc.js
   vendor/codemirror.js))
