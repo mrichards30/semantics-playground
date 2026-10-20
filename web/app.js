@@ -28,7 +28,6 @@ function ensureLoaded() {
     banner.replaceChildren(
       `The language has ${errors || 1} error${errors > 1 ? "s" : ""}. `,
       link("Fix them", () => showPage("language")));
-    $("start").disabled = true;
     $("session").hidden = true;
     loadedText = null;
     return false;
@@ -40,7 +39,6 @@ function ensureLoaded() {
   const n = semplay.rules().length;
   banner.className = "status";
   banner.textContent = `${n} rule${n === 1 ? "" : "s"}`;
-  $("start").disabled = false;
   $("session").hidden = true;
   $("query").hidden = true;
   return true;
@@ -146,10 +144,21 @@ function setMode(m) {
 
 // --- program ----------------------------------------------------------
 
+// Starts a run of the program as written. While the program doesn't parse,
+// the last run stays on screen, faded.
 function start() {
   if (!ensureLoaded()) return;
-  const r = semplay.config(program.text.trim());
+  const text = program.text.trim();
   const status = $("program-status");
+  if (!text) {
+    status.textContent = "";
+    $("session").hidden = true;
+    $("query").hidden = true;
+    return;
+  }
+  const r = semplay.config(text);
+  $("session").classList.toggle("stale", !r.ok);
+  $("query").classList.toggle("stale", !r.ok);
   if (!r.ok) {
     status.className = "status error";
     status.textContent = `col ${r.col}: ${r.message}`;
@@ -358,8 +367,8 @@ function showExample(i) {
   const ex = EXAMPLES[i];
   if (mode === "text") setMode("rules");
   Editor.load(ex.language);
-  program.text = ex.program;
   loadedText = null;
+  program.text = ex.program;
   $("session").hidden = true;
   if (page === "run") showPage("run");
 }
@@ -367,9 +376,10 @@ function showExample(i) {
 // The program editor checks against the loaded language as you type.
 const program = ProgramEditor({
   parent: $("program"),
-  onRun: () => start(),
+  // the run always follows the program
+  onChange: () => { if (page === "run") start(); },
   check(text) {
-    if (!loadedText) return [];
+    if (!loadedText || !text.trim()) return [];
     const idx = Editor.byteToIndex(text);
     const ds = semplay.checkProgram(text).map((d) => {
       const from = Math.min(idx(d.start), text.length);
@@ -388,7 +398,6 @@ function init() {
 
   $("page-language").onclick = () => showPage("language");
   $("page-run").onclick = () => showPage("run");
-  $("start").onclick = start;
   $("reset").onclick = reset;
   $("focus").addEventListener("keydown", (e) => {
     if (page !== "run" || $("session").hidden) return;

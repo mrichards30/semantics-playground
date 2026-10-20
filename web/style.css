@@ -515,3 +515,6 @@ ul.deriv.root { padding-left: 0; border-left: none; }
 /* a single next step hangs straight off the stem */
 .fan:not(.many) { padding-top: 0; }
 .fan:not(.many) .card-step::before { display: none; }
+
+/* the program no longer parses: the last run is out of date */
+.stale { opacity: 0.4; pointer-events: none; }

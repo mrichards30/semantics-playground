@@ -129,7 +129,7 @@ const Typeset = (() => {
 
 // The program editor: CodeMirror with the typesetting above, the runtime's
 // checker for squiggles, and the grammar's words for autocomplete.
-// opts: {parent, doc, onRun(), check(text) -> [{from, to, severity, message}]}
+// opts: {parent, doc, onChange(), check(text) -> [{from, to, severity, message}]}
 const ProgramEditor = (opts) => {
   const { EditorState } = CM.state;
   const { EditorView, keymap, placeholder } = CM.view;
@@ -163,9 +163,9 @@ const ProgramEditor = (opts) => {
         linter((v) => opts.check(v.state.doc.toString()), { delay: 200 }),
         autocompletion({ override: [complete] }),
         keymap.of([
-          { key: "Enter", run: () => { opts.onRun(); return true; } },
           ...completionKeymap, ...defaultKeymap, ...historyKeymap,
         ]),
+        EditorView.updateListener.of((u) => { if (u.docChanged) opts.onChange(); }),
         EditorView.lineWrapping,
         placeholder("(e, s)"),
       ],
