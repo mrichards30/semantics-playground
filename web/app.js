@@ -137,6 +137,7 @@ function setMode(m) {
   }
   mode = m;
   $("cards").hidden = m !== "rules";
+  $("cards-hint").hidden = m !== "rules";
   $("text-view").hidden = m !== "text";
   $("tab-rules").classList.toggle("on", m === "rules");
   $("tab-text").classList.toggle("on", m === "text");
@@ -303,7 +304,8 @@ function render(arriving) {
       const why = whyButton(s.why);
       const top = el("div", "top", el("span", "key", succs.length > 1 ? String(k + 1) : "⏎"),
         stepLabel(s.rule, s.labels), why.button);
-      const card = el("div", "card-step", top, tex(semplay.latexDiff(s.target, here.id, "changed")), why.tree);
+      const card = el("div", "card-step", top, tex(semplay.latexDiff(s.target, here.id, "changed")), why.tree,
+        el("div", "hint", "Click to step into rule"));
       card.tabIndex = 0;
       card.title = "take this step";
       card.onclick = () => take(s, succs.length);

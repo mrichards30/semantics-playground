@@ -518,3 +518,6 @@ ul.deriv.root { padding-left: 0; border-left: none; }
 
 /* the program no longer parses: the last run is out of date */
 .stale { opacity: 0.4; pointer-events: none; }
+
+.hint { margin: 0 0 0.5rem; font-size: 12px; color: var(--muted); }
+.card-step .hint { margin: 0.3rem 0 0; }
