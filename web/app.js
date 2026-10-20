@@ -398,7 +398,6 @@ function init() {
 
   $("page-language").onclick = () => showPage("language");
   $("page-run").onclick = () => showPage("run");
-  $("tutorial").onclick = () => Tutorial.start();
   $("reset").onclick = reset;
   $("focus").addEventListener("keydown", (e) => {
     if (page !== "run" || $("session").hidden) return;
