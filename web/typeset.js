@@ -15,6 +15,11 @@ const Typeset = (() => {
     "|->": "↦", "->": "→", ">=": "≥", "<=": "≤", "<>": "≠", "!=": "≠",
     "||": "∥", "&&": "∧", "*": "×", "-": "−",
   };
+  // LaTeX commands that can be typed for the source they stand for
+  const COMMANDS = {
+    langle: "(", rangle: ")", mapsto: "|->", to: "->", rightarrow: "->", geq: ">=", ge: ">=",
+    leq: "<=", le: "<=", neq: "!=", ne: "!=", parallel: "||", land: "&&", wedge: "&&", times: "*",
+  };
 
   // info: {keywords: Set, atoms: Set, ops: [string]} from the checker.
   let info = { keywords: new Set(), atoms: new Set(), ops: [] };
@@ -100,31 +105,54 @@ const Typeset = (() => {
     }
 
     const build = (view) => {
-      const marks = [];
+      const marks = [], glyphs = [];
       const text = view.state.doc.toString();
       for (const t of tokens(text)) {
-        marks.push(
-          t.glyph
-            ? Decoration.replace({ widget: new Glyph(t.glyph, t.kind) }).range(t.from, t.to)
-            : Decoration.mark({ class: `ts-${t.kind}` }).range(t.from, t.to));
+        if (t.glyph) glyphs.push(Decoration.replace({ widget: new Glyph(t.glyph, t.kind) }).range(t.from, t.to));
+        else marks.push(Decoration.mark({ class: `ts-${t.kind}` }).range(t.from, t.to));
       }
-      return Decoration.set(marks, true);
+      return { all: Decoration.set([...marks, ...glyphs], true), glyphs: Decoration.set(glyphs, true) };
     };
 
     const plugin = ViewPlugin.fromClass(
       class {
-        constructor(view) { this.decorations = build(view); }
-        update(u) { this.decorations = build(u.view); }
+        constructor(view) { ({ all: this.decorations, glyphs: this.glyphs } = build(view)); }
+        update(u) { ({ all: this.decorations, glyphs: this.glyphs } = build(u.view)); }
       },
       {
         decorations: (v) => v.decorations,
         // the cursor steps over a glyph as one character
-        provide: (p) => EditorView.atomicRanges.of((view) => view.plugin(p)?.decorations || Decoration.none),
+        provide: (p) => EditorView.atomicRanges.of((view) => view.plugin(p)?.glyphs || Decoration.none),
       });
-    return plugin;
+
+    // A LaTeX command (\langle, \mapsto …) becomes its source once it is
+    // ended by any non-letter; an ending space is swallowed, as in LaTeX.
+    const commands = EditorView.inputHandler.of((view, from, to, text) => {
+      if (/^[A-Za-z]/.test(text)) return false;
+      const before = view.state.sliceDoc(Math.max(0, from - 20), from).match(/\\([A-Za-z]+)$/);
+      const src = before && COMMANDS[before[1]];
+      if (!src) return false;
+      const start = from - before[0].length;
+      const insert = src + (text === " " ? "" : text);
+      view.dispatch({ changes: { from: start, to, insert }, selection: { anchor: start + insert.length } });
+      return true;
+    });
+    return [plugin, commands];
   }
 
-  return { setLanguage, tokens, html, codemirror, get info() { return info; } };
+  // completions for a \command being typed
+  function commandCompletions(ctx) {
+    const w = ctx.matchBefore(/\\[A-Za-z]*/);
+    if (!w) return null;
+    return {
+      from: w.from,
+      options: Object.entries(COMMANDS).map(([name, src]) => ({
+        label: "\\" + name, detail: GLYPH[src] || (src === "(" ? "⟨" : src === ")" ? "⟩" : src), apply: src,
+      })),
+    };
+  }
+
+  return { setLanguage, tokens, html, codemirror, commandCompletions, get info() { return info; } };
 })();
 
 // The program editor: CodeMirror with the typesetting above, the runtime's
@@ -138,6 +166,8 @@ const ProgramEditor = (opts) => {
   const { linter, forceLinting } = CM.lint;
 
   const complete = (ctx) => {
+    const cmd = Typeset.commandCompletions(ctx);
+    if (cmd) return cmd;
     const w = ctx.matchBefore(/[A-Za-z_][A-Za-z0-9_']*/);
     if (!w || (w.from === w.to && !ctx.explicit)) return null;
     const info = Typeset.info;
